@@ -1,10 +1,10 @@
-# Typst package: `peano`
+# Typst package: `{{name}}`
 
-`peano` is a math utility package that provides you with representations of specialized number types, mathematic special functions, number theory related operations and so on. The name of the package comes from [Peano axioms](https://en.wikipedia.org/wiki/Peano_axioms), which builds up the framework of [natural numbers](https://en.wikipedia.org/wiki/Natural_number) &#x2115;, one of the the most elementary concepts in mathematics, aiming to convey this package's orientation as a simple utility package.
+`{{name}}` is a math utility package that provides you with representations of specialized number types, mathematic special functions, number theory related operations and so on. The name of the package comes from [Peano axioms](https://en.wikipedia.org/wiki/Peano_axioms), which builds up the framework of [natural numbers](https://en.wikipedia.org/wiki/Natural_number) &#x2115;, one of the the most elementary concepts in mathematics, aiming to convey this package's orientation as a simple utility package.
 
 ## Number types
 
-`peano` currently supports two number types and their arithmetics:
+`{{name}}` currently supports two number types and their arithmetics:
 
 - `rational`: representation of [rational numbers](https://en.wikipedia.org/wiki/Rational_number) &#x211a; in the form of fractions
 - `complex`: representation of[ complex numbers](https://en.wikipedia.org/wiki/Complex_number) &#x2102;
@@ -14,8 +14,8 @@ It is a pity that Typst doesn't currently support custom types and overloading o
 To use these number types you have to first import the corresponding sub-module:
 
 ```typ
-#import "@preview/peano:0.1.0"
-#import peano.number: rational as q, complex as c
+#import "@preview/{{name}}:{{version}}"
+#import {{name}}.number: rational as q, complex as c
 ```
 
 Each sub-module contains a method called `from`, by which you can directly create a number instance from a string or a built-in Typst number type. Arithmetic methods in these modules will automatically convert all parameters to the expected number type by this `from` method, so you can simply input strings and built-in number types as parameters.
@@ -23,8 +23,8 @@ Each sub-module contains a method called `from`, by which you can directly creat
 ### Rational numbers
 
 ```typ
-#import "@preview/peano:0.1.0"
-#import peano.number: rational as q
+#import "@preview/{{name}}:{{version}}"
+#import {{name}}.number: rational as q
 
 #q.from("1/2") // from string
 #q.from(2, 3) // from numerator and denominator
@@ -42,8 +42,8 @@ Each sub-module contains a method called `from`, by which you can directly creat
 ### Complex numbers
 
 ```typ
-#import "@preview/peano:0.1.0"
-#import peano.number: complex as c
+#import "@preview/{{name}}:{{version}}"
+#import {{name}}.number: complex as c
 
 #c.from("1+2i") // from string
 #c.from(3, 4) // from real and imaginary parts
@@ -52,8 +52,8 @@ Each sub-module contains a method called `from`, by which you can directly creat
 
 ## Number theory
 
-The number theory sub module `peano.ntheory` currently supports prime factorization and the extended Euclidean algorithm that gives out the coefficients $u$ and $v$ in Bézout's identity $\gcd (a, b) = u a + v b$.
+The number theory sub module `{{name}}.ntheory` currently supports prime factorization and the extended Euclidean algorithm that gives out the coefficients $u$ and $v$ in Bézout's identity $\gcd (a, b) = u a + v b$.
 
 ## Special functions
 
-Special functions such as the gamma function, zeta function, Gauss error function are too specific to mathematics that they are not included in Typst's built-in `calc` module. The `peano.special` sub-module covers these functions. For functions that can be defined in the complex field &#x2102;, these functions support input with `peano`'s complex number type.
+Special functions such as the gamma function, zeta function, Gauss error function are too specific to mathematics that they are not included in Typst's built-in `calc` module. The `{{name}}.special` sub-module covers these functions. For functions that can be defined in the complex field &#x2102;, these functions support input with `{{name}}`'s complex number type.
