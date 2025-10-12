@@ -1,8 +1,9 @@
 use core::str::FromStr;
 use paste::paste;
+use std::num::ParseFloatError;
 
 use fraction::Sign;
-use num::complex::Complex64;
+use num::complex::{Complex64, ParseComplexError};
 use num::integer::Integer;
 use num::pow::Pow;
 use num::{One, Zero};
@@ -139,6 +140,7 @@ fn extended_gcd(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
 // Rational
 
 type F = fraction::Fraction;
+type ParseFractionError = fraction::error::ParseError;
 
 #[wasm_func]
 fn fraction(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
@@ -151,7 +153,7 @@ fn fraction(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_func]
-fn parse_fraction(arg1: &[u8]) -> Result<Vec<u8>, fraction::error::ParseError> {
+fn parse_fraction(arg1: &[u8]) -> Result<Vec<u8>, ParseFractionError> {
     let src = String::from_utf8(arg1.to_vec())
         .unwrap()
         .replace("\u{2212}", "-");
@@ -277,23 +279,23 @@ fn decode_complex_seq(arg: &[u8]) -> impl Iterator<Item = Complex64> {
 }
 
 #[wasm_func]
-fn parse_complex(arg: &[u8]) -> Result<Vec<u8>, complex::ParseComplexError> {
+fn parse_complex(arg: &[u8]) -> Result<Vec<u8>, ParseComplexError<ParseFloatError>> {
     let src = String::from_utf8(arg.to_vec())
         .unwrap()
         .replace("\u{2212}", "-");
-    let num = complex::parse_complex(&src)?;
+    let num: Complex64 = str::parse(&src)?;
     Ok(num.into_wasm_output())
 }
 
 #[wasm_func]
 fn complex_add(arg: &[u8]) -> Vec<u8> {
-    let result: Complex64 = decode_complex_seq(arg).fold(Complex64::zero(), |acc, x| acc + x);
+    let result: Complex64 = decode_complex_seq(arg).sum();
     result.into_wasm_output()
 }
 
 #[wasm_func]
 fn complex_mul(arg: &[u8]) -> Vec<u8> {
-    let result = decode_complex_seq(arg).fold(Complex64::one(), |acc, x| acc * x);
+    let result: Complex64 = decode_complex_seq(arg).product();
     result.into_wasm_output()
 }
 

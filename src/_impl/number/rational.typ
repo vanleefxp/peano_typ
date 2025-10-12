@@ -82,13 +82,25 @@
 #let sub(n, m) = {
   let n = rational(n)
   let m = rational(m)
-  decode-number(math-utils-wasm.fraction_sub(n, m), number-type)
+  decode-number(
+    math-utils-wasm.fraction_sub(
+      encode-number(n),
+      encode-number(m)
+    ),
+    number-type
+  )
 }
 
 #let div(n, m) = {
   let n = rational(n)
   let m = rational(m)
-  decode-number(math-utils-wasm.fraction_div(n, m), number-type)
+  decode-number(
+    math-utils-wasm.fraction_div(
+      encode-number(n),
+      encode-number(m)
+    ),
+    number-type
+  )
 }
 
 #let neg(n) = {
