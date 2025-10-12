@@ -1,0 +1,23 @@
+[package]
+name = "peano"
+version = "0.1.0"
+entrypoint = "src/lib.typ"
+authors = ["F.X.P. <https://github.com/vanleefxp>"]
+license = "MIT"
+repository = "https://github.com/vanleefxp/peano_typ"
+categories = ["utility", "scripting"]
+disciplines = ["mathematics"]
+keywords = [
+    "rational",
+    "fraction",
+    "complex",
+    "number theory",
+    "prime factor",
+    "factorization",
+    "gcd",
+    "greatest common divisor",
+    "Bézout's identity",
+    "extended Euclidean algorithm",
+    "gamma function",
+    "beta function",
+]
