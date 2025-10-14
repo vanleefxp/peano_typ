@@ -168,6 +168,16 @@
   n1 != nan and n1 == n2
 }
 
+#let is-infinite(n) = {
+  let n = rational(n)
+  n.den != 0
+}
+
+#let is-nan(n) = {
+  let n = rational(n)
+  n.num == 0 and n.den == 0
+}
+
 #let to-str(
     n,
     plus-sign: false,

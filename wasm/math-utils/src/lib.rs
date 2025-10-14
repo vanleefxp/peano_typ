@@ -1,4 +1,3 @@
-use core::str::FromStr;
 use paste::paste;
 use std::num::ParseFloatError;
 
@@ -140,7 +139,6 @@ fn extended_gcd(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
 // Rational
 
 type F = fraction::Fraction;
-type ParseFractionError = fraction::error::ParseError;
 
 #[wasm_func]
 fn fraction(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
@@ -153,11 +151,12 @@ fn fraction(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
 }
 
 #[wasm_func]
-fn parse_fraction(arg1: &[u8]) -> Result<Vec<u8>, ParseFractionError> {
+fn parse_fraction(arg1: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
     let src = String::from_utf8(arg1.to_vec())
         .unwrap()
         .replace("\u{2212}", "-");
-    let frac = frac::MyFrac::from(F::from_str(src.as_str())?);
+    // let frac = frac::MyFrac::from(F::from_str(src.as_str())?);
+    let frac = frac::MyFrac::from(frac::parse_fraction::<u64>(&src)?);
     let mut out = Vec::new();
     ciborium::ser::into_writer(&frac, &mut out).unwrap();
     Ok(out)

@@ -15,6 +15,8 @@
   den,
   sign,
   eq,
+  is-infinite,
+  is-nan,
   to-str,
   to-math,
   inf,
