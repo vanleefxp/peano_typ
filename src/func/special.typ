@@ -1,6 +1,6 @@
 /// Special functions in mathematics
 
-#import "_impl/special.typ": (
+#import "../_impl/func/special.typ": (
   gamma,
   digamma,
   erf,

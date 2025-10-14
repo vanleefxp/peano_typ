@@ -94,6 +94,10 @@ A rational number can be displayed in both string and math format by using the `
 
 The number theory sub module `{{name}}.ntheory` currently supports prime factorization and the extended Euclidean algorithm that gives out the coefficients $u$ and $v$ in Bézout's identity $\gcd (a, b) = u a + v b$.
 
-## Special functions
+## Mathematic functions
 
-Special functions such as the gamma function, zeta function, Gauss error function are too specific to mathematics that they are not included in Typst's built-in `calc` module. The `{{name}}.special` sub-module covers these functions. For functions that can be defined in the complex field &#x210
+The `{{name}}.func` sub-module provides a collection of basic mathematic functions. Some of them are also included in Typst's `calc` module, but extended to support complex number input. Other self-defined functions also support function input if they can be defined in the complex field &#x210;.
+
+### Special functions
+
+The `{{name}}.func.special` sub-module include special functions such as the gamma function, zeta function, Gauss error function.

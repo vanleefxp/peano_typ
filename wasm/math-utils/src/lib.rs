@@ -321,3 +321,54 @@ fn complex_pow_complex(arg1: &[u8], arg2: &[u8], arg3: &[u8], arg4: &[u8]) -> Ve
     let result = base.powc(exp);
     result.into_wasm_output()
 }
+
+macro_rules! define_real_func {
+    ($func_name: ident) => {
+        #[wasm_func]
+        fn $func_name(arg: &[u8]) -> Vec<u8> {
+            let num = f64::from_le_bytes(arg.try_into().unwrap());
+            let result = num.$func_name();
+            result.into_wasm_output()
+        }
+    };
+}
+
+macro_rules! define_complex_func {
+    ($func_name: ident) => {
+        paste! {
+            #[wasm_func]
+            fn [<$func_name _complex>](arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
+                let num = decode_complex(arg1, arg2);
+                let result = num.$func_name();
+                result.into_wasm_output()
+            }
+        }
+    };
+}
+
+macro_rules! define_func_with_complex {
+    ($func_name: ident) => {
+        define_real_func!($func_name);
+        define_complex_func!($func_name);
+    };
+}
+
+define_complex_func!(sin);
+define_complex_func!(cos);
+define_complex_func!(tan);
+define_complex_func!(sinh);
+define_complex_func!(cosh);
+define_complex_func!(tanh);
+define_complex_func!(asin);
+define_complex_func!(acos);
+define_complex_func!(atan);
+define_complex_func!(exp);
+define_complex_func!(ln);
+define_complex_func!(log2);
+define_complex_func!(log10);
+define_complex_func!(sqrt);
+define_complex_func!(cbrt);
+
+define_func_with_complex!(asinh);
+define_func_with_complex!(acosh);
+define_func_with_complex!(atanh);
