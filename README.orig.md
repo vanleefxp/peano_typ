@@ -42,12 +42,41 @@ Each sub-module contains a method called `from`, by which you can directly creat
 Currently, `rational.from` supports fraction notation and decimal notation with an optional set of repeating digits enclosed in square brackets.
 
 ```typ
+#import "@preview/{{name}}:{{version}}"
+#import {{name}}.number: rational as q
+
+// normal values
+
 #q.from("1/2")
 #q.from("-2/3") // sign before numerator
-#q.form("5/-4") // sign before denominator
+#q.from("5/-4") // sign before denominator
+
+// infinity or indeterminate values
+
 #q.from("1/0")  // infinity
 #q.from("-1/0") // negative infinity
+#q.from("1/-0") // also negative infinity
 #q.from("0/0")  // NaN
+
+// decimal notation
+
+#q.from("0.25")
+#q.from("0.[3]") // repeating part wrapped in bracket
+#q.from("3.[142857]")
+#q.from("1.14[514]")
+#q.from("1[2.3]") // repeating part can cross decimal point
+```
+
+A rational number can be displayed in both string and math format by using the `rational.to-str` and `rational.to-math` methods.
+
+```typ
+#import "@preview/{{name}}:{{version}}"
+#import {{name}}.number: rational as q
+
+#let value = q.from(113, 355)
+
+#q.to-str(value)
+#q.to-math(value)
 ```
 
 ### Complex numbers
@@ -67,4 +96,4 @@ The number theory sub module `{{name}}.ntheory` currently supports prime factori
 
 ## Special functions
 
-Special functions such as the gamma function, zeta function, Gauss error function are too specific to mathematics that they are not included in Typst's built-in `calc` module. The `{{name}}.special` sub-module covers these functions. For functions that can be defined in the complex field &#x2102;, these functions support input with `{{name}}`'s complex number type.
+Special functions such as the gamma function, zeta function, Gauss error function are too specific to mathematics that they are not included in Typst's built-in `calc` module. The `{{name}}.special` sub-module covers these functions. For functions that can be defined in the complex field &#x210

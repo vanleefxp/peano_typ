@@ -1,6 +1,7 @@
 use std::{num::ParseIntError, str::FromStr};
 
-use anyhow::Context;
+use anyhow::{Context, bail};
+use fraction::Ratio;
 use fraction::{GenericFraction, Sign, generic::GenericInteger};
 use num::pow::Pow;
 use num::{Zero, integer::Integer};
@@ -107,6 +108,24 @@ where
     }
 }
 
+// impl<T> Deref for MyFrac<T> where T: Integer + Clone + Copy {
+//     type Target = GenericFraction<T>;
+
+//     fn deref(&self) -> &Self::Target {
+//         if self.den == T::zero() {
+//             if self.num == T::zero() {
+//                 &GenericFraction::NaN
+//             } else {
+//                 let sign = if self.sign { Sign::Plus } else { Sign::Minus };
+//                 Box::new(GenericFraction::Infinity(sign)).as_ref()
+//             }
+//         } else {
+//             let sign = if self.sign { Sign::Plus } else { Sign::Minus };
+//             Box::new(GenericFraction::new_raw_signed(sign, self.num, self.den)).as_ref()
+//         }
+//     }
+// }
+
 impl Pow<i64> for MyFrac<u64> {
     type Output = Self;
 
@@ -154,7 +173,7 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
         let before_point = &src[..idx];
         let after_point = &src[idx + 1..];
 
-        match (before_point.find('['), before_point.find(']')) {
+        match (before_point.find('['), before_point.rfind(']')) {
             (Some(l_idx), Some(r_idx)) => {
                 // 1[23]4.5678
                 let int_part = &before_point[..l_idx];
@@ -167,7 +186,7 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
                 let r_idx = after_point
                     .rfind(']')
                     .context("Bracket for repeating part not closed")?;
-                let int_part = before_point.to_string();
+                let int_part = before_point[..l_idx].to_string();
                 let before_point_repeating_digits = &before_point[l_idx + 1..];
                 exp += before_point_repeating_digits.len() as isize;
                 let mut repeating_part = before_point_repeating_digits.to_string();
@@ -192,10 +211,10 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
                         exp -= after_point.len() as isize;
                         Ok((sign, int_part, "".to_string(), exp))
                     }
-                    _ => anyhow::bail!("Bracket for repeating part not match"),
+                    _ => bail!("Bracket for repeating part not match"),
                 }
             }
-            _ => anyhow::bail!("Starting bracket for repeating part not found"),
+            _ => bail!("Starting bracket for repeating part not found"),
         }
     } else {
         // no decimal point
@@ -211,7 +230,7 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
                 // 12345678
                 Ok((sign, src.to_string(), "".to_string(), exp))
             }
-            _ => anyhow::bail!("Invalid fraction format"),
+            _ => bail!("Invalid fraction format"),
         }
     }
 }
@@ -242,10 +261,10 @@ where
         + Into<GenericFraction<T>>,
 {
     if !int_part.chars().all(|c| c.is_digit(10)) {
-        anyhow::bail!("Invalid integer part")
+        bail!("Invalid integer part")
     }
     if !repeating_part.chars().all(|c| c.is_digit(10)) {
-        anyhow::bail!("Invalid repeating part")
+        bail!("Invalid repeating part")
     }
     let repeating_part_len = repeating_part.len();
     let int_part: T = empty_safe_parse(int_part)?;
@@ -257,7 +276,7 @@ where
         {
             fr
         } else {
-            anyhow::bail!("Invalid fraction format")
+            bail!("Invalid fraction format")
         };
     }
     if exp > 0 {
@@ -278,7 +297,8 @@ where
         + Copy
         + FromStr<Err = ParseIntError>
         + Pow<usize, Output = T>
-        + Into<GenericFraction<T>>,
+        + Into<GenericFraction<T>>
+        + fraction::Integer,
 {
     if src.eq_ignore_ascii_case("inf") {
         return Ok(GenericFraction::infinity());
@@ -288,16 +308,48 @@ where
         return Ok(GenericFraction::nan());
     }
     match src.find('/') {
-        Some(_) => {
-            // let num = T::from_str(&src[..idx])?;
-            // let den = T::from_str(&src[idx + 1..])?;
-            // if let Some(fr) = GenericFraction::new_generic(Sign::Plus, num, den) {
-            //     Ok(fr)
-            // } else {
-            //     anyhow::bail!("Invalid fraction format")
-            // }
-            // [TODO]
-            Ok(GenericFraction::from_str(src)?)
+        Some(idx) => {
+            let num_src = &src[..idx];
+            let den_src = &src[idx + 1..];
+            let mut sign = Sign::Plus;
+
+            let num_src = match num_src.chars().next() {
+                Some('+') => &num_src[1..],
+                Some('-') => {
+                    sign = -sign;
+                    &num_src[1..]
+                }
+                _ => &num_src[..],
+            };
+            let den_src = match den_src.chars().next() {
+                Some('+') => &den_src[1..],
+                Some('-') => {
+                    sign = -sign;
+                    &den_src[1..]
+                }
+                _ => &den_src[..],
+            };
+
+            let num = if num_src.is_empty() {
+                T::_1()
+            } else {
+                T::from_str(num_src)?
+            };
+            let den = if den_src.is_empty() {
+                T::_1()
+            } else {
+                T::from_str(den_src)?
+            };
+
+            if den.is_zero() {
+                if num.is_zero() {
+                    Ok(GenericFraction::NaN)
+                } else {
+                    Ok(GenericFraction::Infinity(sign))
+                }
+            } else {
+                Ok(GenericFraction::Rational(sign, Ratio::new(num, den)))
+            }
         }
         None => {
             let (sign, int_part, repeating_part, exp) = split_decimal_notation(src)?;

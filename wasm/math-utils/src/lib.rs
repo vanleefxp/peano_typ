@@ -136,7 +136,7 @@ fn extended_gcd(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
     out
 }
 
-// Rational
+// Rational / Fraction
 
 type F = fraction::Fraction;
 
