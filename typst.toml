@@ -9,10 +9,10 @@ repository = "https://github.com/vanleefxp/peano_typ"
 categories = ["utility", "scripting"]
 disciplines = ["mathematics"]
 keywords = [
-    "rational",
+    "rational number",
     "fraction",
     "repeating decimal",
-    "complex",
+    "complex number",
     "number theory",
     "prime factor",
     "factorization",
