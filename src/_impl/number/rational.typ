@@ -1,3 +1,6 @@
+// -> number/rational.typ
+/// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Rational_number")[rational numbers] $QQ$ in the form of fractions
+
 #import "init.typ": *
 #let math-utils-wasm = plugin("../math-utils.wasm")
 #let number-type = "rational"
@@ -11,7 +14,7 @@
   )
 }
 
-#let is-rational(obj) = {
+#let /*pub as is_*/ is-rational(obj) = {
   is-number-type(obj, number-type)
 }
 
@@ -21,12 +24,14 @@
   make-rational(sign, n, d)
 }
 
-#let inf = make-rational(true, 1, 0)
-#let neg-inf = make-rational(false, 1, 0)
-#let nan = make-rational(true, 0, 0)
-#let zero = make-rational(true, 0, 1)
+#let /*pub*/ inf = make-rational(true, 1, 0)
+#let /*pub*/ neg-inf = make-rational(false, 1, 0)
+#let /*pub*/ nan = make-rational(true, 0, 0)
+#let /*pub*/ zero = make-rational(true, 0, 1)
+#let /*pub*/ one = make-rational(true, 1, 1)
+#let /*pub*/ neg-one = make-rational(false, 1, 1)
 
-#let rational(..args) = {
+#let /*pub as from*/ rational(..args) = {
   let args = args.pos()
   if args.len() == 1 {
     let (src,) = args
@@ -58,10 +63,8 @@
     panic("Too many positional arguments.")
   }
 }
-// [TODO] 1/-2, 1/0 won't parse
-// [TODO] support notations like 0.[3]
 
-#let add(..args) = {
+#let /*pub*/ add(..args) = {
   let args = args.pos()
   let encoded-args = encode-numbers(args.map(rational))
   decode-number(
@@ -70,7 +73,7 @@
   )
 }
 
-#let mul(..args) = {
+#let /*pub*/ mul(..args) = {
   let args = args.pos()
   let encoded-args = encode-numbers(args.map(rational))
   decode-number(
@@ -79,7 +82,7 @@
   )
 }
 
-#let sub(n, m) = {
+#let /*pub*/ sub(n, m) = {
   let n = rational(n)
   let m = rational(m)
   decode-number(
@@ -91,7 +94,7 @@
   )
 }
 
-#let div(n, m) = {
+#let /*pub*/ div(n, m) = {
   let n = rational(n)
   let m = rational(m)
   decode-number(
@@ -103,7 +106,7 @@
   )
 }
 
-#let neg(n) = {
+#let /*pub*/ neg(n) = {
   let n = rational(n)
   if n.num != 0 {
     n.sign = not n.sign
@@ -111,12 +114,12 @@
   n
 }
 
-#let reci(n) = {
+#let /*pub*/ reci(n) = {
   let n = rational(n)
   (n.den, n.num) = (n.num, n.den)
 }
 
-#let pow(n, p) = {
+#let /*pub*/ pow(n, p) = {
   let n = rational(n)
   assert.eq(type(p), int)
   decode-number(
@@ -128,7 +131,7 @@
   )
 }
 
-#let limit-den(n, max-den) = {
+#let /*pub*/ limit-den(n, max-den) = {
   let n = rational(n)
   decode-number(
     math-utils-wasm.fraction_limit_den(
@@ -139,7 +142,8 @@
   )
 }
 
-#let num(n, signed: false) = {
+#let /*pub*/ num(n, signed: false) = {
+  let n = rational(n)
   if signed and not n.sign {
     -n.num
   } else {
@@ -147,7 +151,8 @@
   }
 }
 
-#let den(n, signed: false) = {
+#let /*pub*/ den(n, signed: false) = {
+  let n = rational(n)
   if signed and not n.sign {
     -n.den
   } else {
@@ -155,30 +160,30 @@
   }
 }
 
-#let sign(n) = {
+#let /*pub*/ sign(n) = {
   let (sign, num, _) = n
   if num == 0 { 0 }
   else if sign { -1 }
   else { 1 }
 }
 
-#let eq(n1, n2) = {
+#let /*pub*/ eq(n1, n2) = {
   let n1 = rational(n1)
   let n2 = rational(n2)
   n1 != nan and n1 == n2
 }
 
-#let is-infinite(n) = {
+#let /*pub*/ is-infinite(n) = {
   let n = rational(n)
   n.den != 0
 }
 
-#let is-nan(n) = {
+#let /*pub*/ is-nan(n) = {
   let n = rational(n)
   n.num == 0 and n.den == 0
 }
 
-#let to-str(
+#let /*pub*/ to-str(
     n,
     plus-sign: false,
     denom-one: false,
@@ -217,7 +222,7 @@
   }
 }
 
-#let to-math(
+#let /*pub*/ to-math(
   n,
   plus-sign: false,
   denom-one: false,

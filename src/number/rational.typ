@@ -1,8 +1,14 @@
 /// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Rational_number")[rational numbers] $QQ$ in the form of fractions
 
 #import "../_impl/number/rational.typ": (
-  rational as from,
   is-rational as is_,
+  inf,
+  neg-inf,
+  nan,
+  zero,
+  one,
+  neg-one,
+  rational as from,
   add,
   mul,
   sub,
@@ -19,7 +25,6 @@
   is-nan,
   to-str,
   to-math,
-  inf,
-  neg-inf,
-  nan,
 )
+
+// This is a program-generated file. Do not edit it directly.

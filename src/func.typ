@@ -1,19 +1,2 @@
-#import "_impl/func/init.typ": (
-  exp,
-  log,
-  ln,
-  sin,
-  cos,
-  tan,
-  sinh,
-  cosh,
-  tanh,
-  asin,
-  acos,
-  atan,
-  asinh,
-  acosh,
-  atanh,
-)
-
+#import "func/common.typ": *
 #import "func/special.typ"

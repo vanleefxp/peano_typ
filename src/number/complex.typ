@@ -1,25 +1,28 @@
 /// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Complex_number")[complex numbers] $CC$
 
 #import "../_impl/number/complex.typ": (
-  complex as from,
   is-complex as is_,
-  arg,
+  complex as from,
+  i,
+  neg-i,
+  zero,
+  one,
+  neg-one,
+  omega,
+  omega-2,
+  nan,
   abs,
+  arg,
   conj,
   neg,
   re,
   im,
   add,
-  sub,
   mul,
+  sub,
   div,
   pow,
   eq,
-  zero,
-  one,
-  neg-one,
-  i,
-  neg-i,
-  omega,
-  omega-2,
 )
+
+// This is a program-generated file. Do not edit it directly.

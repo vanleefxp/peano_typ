@@ -1,12 +1,13 @@
-/// Special functions in mathematics
+/// Special mathematic functions.
 
 #import "../_impl/func/special.typ": (
   gamma,
   digamma,
+  psi,
   erf,
-  beta,
   zeta,
+  beta,
   euler-gamma,
 )
 
-#let psi = digamma
+// This is a program-generated file. Do not edit it directly.

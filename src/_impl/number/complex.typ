@@ -1,3 +1,6 @@
+// -> number/complex.typ
+/// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Complex_number")[complex numbers] $CC$
+
 #import "init.typ": *
 #let math-utils-wasm = plugin("../math-utils.wasm")
 #let number-type = "complex"
@@ -31,9 +34,9 @@
   make-complex(re, im)
 }
 
-#let is-complex(obj) = is-number-type(obj, "complex")
+#let /*pub as is_*/ is-complex(obj) = is-number-type(obj, "complex")
 
-#let complex(..args) = {
+#let /*pub as from*/ complex(..args) = {
   let args = args.pos()
   if args.len() == 1 {
     let (src,) = args
@@ -67,55 +70,57 @@
 }
 
 // The imaginary unit $upright(i) = 0 + 1 upright(i)$
-#let i = make-complex(0, 1)
+#let /*pub*/ i = make-complex(0, 1)
 
 // The negation of imaginary unit $-upright(i) = 0 - 1 upright(i)$.
-#let neg-i = make-complex(0, -1)
+#let /*pub*/ neg-i = make-complex(0, -1)
 
 // The complex zero value $0 = 0 + 0 upright(i)$
-#let zero = make-complex(0, 0)
+#let /*pub*/ zero = make-complex(0, 0)
 
 // The complex one value $1 = 1 + 0 upright(i)$
-#let one = make-complex(1, 0)
+#let /*pub*/ one = make-complex(1, 0)
 
 // The complex negative one value $-1 = -1 + 0 upright(i)$
-#let neg-one = make-complex(-1, 0)
+#let /*pub*/ neg-one = make-complex(-1, 0)
 
 // the 3#super[rd] unit root $omega = - 1/2 + sqrt(3)/2 upright(i)$
-#let omega = make-complex(-0.5, 0.5 * calc.sqrt(3))
+#let /*pub*/ omega = make-complex(-0.5, 0.5 * calc.sqrt(3))
 
 // square (or conjugate) of the 3#super[rd] unit root $macron(omega) = - 1/2 - sqrt(3)/2 upright(i)$
-#let omega-2 = make-complex(-0.5, -0.5 * calc.sqrt(3))
+#let /*pub*/ omega-2 = make-complex(-0.5, -0.5 * calc.sqrt(3))
 
-#let abs(z) = {
+#let /*pub*/ nan = make-complex(float.nan, float.nan)
+
+#let /*pub*/ abs(z) = {
   let (re, im) = complex(z)
   calc.norm(re, im)
 }
 
-#let arg(z) = {
+#let /*pub*/ arg(z) = {
   let (re, im) = complex(z)
-  calc.atan2(im, re)
+  calc.atan2(re, im)
 }
 
-#let conj(z) = {
+#let /*pub*/ conj(z) = {
   let (re, im) = complex(z)
   make-complex(re, -im)
 }
 
-#let neg(z) = {
+#let /*pub*/ neg(z) = {
   let (re, im) = complex(z)
   make-complex(-re, -im)
 }
 
-#let re(z) = {
+#let /*pub*/ re(z) = {
   complex(z).re
 }
 
-#let im(z) = {
+#let /*pub*/ im(z) = {
   complex(z).im
 }
 
-#let add(..args) = {
+#let /*pub*/ add(..args) = {
   if args.pos().len() == 0 {
     zero
   } else {
@@ -125,7 +130,7 @@
   }
 }
 
-#let mul(..args) = {
+#let /*pub*/ mul(..args) = {
   if args.pos().len() == 0 {
     one
   } else {
@@ -135,13 +140,13 @@
   }
 }
 
-#let sub(z1, z2) = {
+#let /*pub*/ sub(z1, z2) = {
   let z1 = complex(z1)
   let z2 = complex(z2)
   make-complex(z1.re - z2.re, z1.im - z2.im)
 }
 
-#let div(z1, z2) = {
+#let /*pub*/ div(z1, z2) = {
   let z1 = complex(z1)
   let z2 = complex(z2)
   decode-complex(
@@ -154,7 +159,7 @@
   )
 }
 
-#let pow(z1, z2) = {
+#let /*pub*/ pow(z1, z2) = {
   let z1 = complex(z1)
   if type(z2) == int or type(z2) == decimal {
     z2 = float(z2)
@@ -180,7 +185,7 @@
   }
 }
 
-#let eq(z1, z2) = {
+#let /*pub*/ eq(z1, z2) = {
   let z1 = complex(z1)
   let z2 = complex(z2)
   z1 == z2

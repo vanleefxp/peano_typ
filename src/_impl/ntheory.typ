@@ -1,10 +1,13 @@
+// -> ntheory.typ
+/// number theory operations
+
 #let math-utils-wasm = plugin("math-utils.wasm")
 
-#let prime-fac(num) = {
+#let /*pub*/ prime-fac(num) = {
   cbor(math-utils-wasm.prime_factors(num.to-bytes(endian: "little")))
 }
 
-#let egcd(a, b) = {
+#let /*pub*/ egcd(a, b) = {
   cbor(
     math-utils-wasm.extended_gcd(
       a.to-bytes(endian: "little"),
