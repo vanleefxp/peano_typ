@@ -39,7 +39,7 @@ Each sub-module contains a method called `from`, by which you can directly creat
 #q.to-math(q.from(113, 355)) // convert to formatted `math.equation` element
 ```
 
-Currently, `rational.from` supports fraction notation and decimal notation with an optional set of repeating digits enclosed in square brackets.
+Currently, `rational.from` supports fraction notation and decimal notation with an optional set of [repeating digits](https://en.wikipedia.org/wiki/Repeating_decimal) enclosed in square brackets.
 
 ```typ
 #import "@preview/{{name}}:{{version}}"

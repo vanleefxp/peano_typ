@@ -1,3 +1,5 @@
+<!-- This is a program-generated file. Do not edit it directly. -->
+
 # Typst package: `peano`
 
 `peano` is a math utility package that provides you with representations of specialized number types, mathematic special functions, number theory related operations and so on. The name of the package comes from [Peano axioms](https://en.wikipedia.org/wiki/Peano_axioms), which builds up the framework of [natural numbers](https://en.wikipedia.org/wiki/Natural_number) &#x2115;, one of the the most elementary concepts in mathematics, aiming to convey this package's orientation as a simple utility package.
@@ -39,7 +41,7 @@ Each sub-module contains a method called `from`, by which you can directly creat
 #q.to-math(q.from(113, 355)) // convert to formatted `math.equation` element
 ```
 
-Currently, `rational.from` supports fraction notation and decimal notation with an optional set of repeating digits enclosed in square brackets.
+Currently, `rational.from` supports fraction notation and decimal notation with an optional set of [repeating digits](https://en.wikipedia.org/wiki/Repeating_decimal) enclosed in square brackets.
 
 ```typ
 #import "@preview/peano:0.1.0"

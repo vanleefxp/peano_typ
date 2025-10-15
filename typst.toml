@@ -11,6 +11,7 @@ disciplines = ["mathematics"]
 keywords = [
     "rational",
     "fraction",
+    "repeating decimal",
     "complex",
     "number theory",
     "prime factor",
@@ -21,4 +22,6 @@ keywords = [
     "extended Euclidean algorithm",
     "gamma function",
     "beta function",
+    "Gauss error function",
+    "Riemann zeta function",
 ]

@@ -23,7 +23,7 @@ if __name__ == "__main__":
     impl_dir = src_dir / "_impl"
     # generate export files for each implementation file that have public items
     for source_file in impl_dir.glob("**/*.typ"):
-        with source_file.open() as f:
+        with source_file.open(encoding="utf-8") as f:
             line = f.readline()
             if (match := export_file_re.match(line)) is not None:
                 export_file = src_dir / (line[match.end() :].strip())
@@ -60,7 +60,7 @@ if __name__ == "__main__":
                 f"exporting `{source_file.relative_to(DIR, walk_up=True).as_posix()}` "
                 f"to `{export_file.relative_to(DIR, walk_up=True).as_posix()}`"
             )
-            with export_file.open("w") as f:
+            with export_file.open("w", encoding="utf-8") as f:
                 if len(module_doc) > 0:
                     f.write(module_doc)
                     f.write("\n\n")
@@ -89,6 +89,9 @@ if __name__ == "__main__":
         readme_orig_file.open(encoding="utf-8") as f1,
         readme_file.open("w", encoding="utf-8") as f2,
     ):
+        f2.write(
+            "<!-- This is a program-generated file. Do not edit it directly. -->\n\n"
+        )
         while len(line := f1.readline()) > 0:
             replaced_line = line
             for k, v in package_info.items():
