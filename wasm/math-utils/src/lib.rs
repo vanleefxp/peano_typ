@@ -1,11 +1,11 @@
 use paste::paste;
-use std::num::ParseFloatError;
 
 use fraction::Sign;
-use num::complex::{Complex64, ParseComplexError};
+use num::complex::Complex64;
 use num::integer::Integer;
 use num::pow::Pow;
 use num::{One, Zero};
+use num_prime::nt_funcs;
 use wasm_minimal_protocol::*;
 
 mod complex;
@@ -23,6 +23,12 @@ impl IntoWasmOutput for f64 {
     }
 }
 
+impl IntoWasmOutput for u64 {
+    fn into_wasm_output(self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+}
+
 impl IntoWasmOutput for Complex64 {
     fn into_wasm_output(self) -> Vec<u8> {
         let mut out: Vec<u8> = Vec::with_capacity(16);
@@ -30,6 +36,65 @@ impl IntoWasmOutput for Complex64 {
         out.extend_from_slice(self.im.to_le_bytes().as_ref());
         out
     }
+}
+
+macro_rules! define_func {
+    ($func_name: ident, $arg_type: ty, $calc_expr: expr) => {
+        #[wasm_func]
+        fn $func_name(arg: &[u8]) -> Vec<u8> {
+            let num = <$arg_type>::from_le_bytes(arg.try_into().unwrap());
+            let result = $calc_expr(num);
+            result.into_wasm_output()
+        }
+    };
+}
+
+macro_rules! define_failable_func {
+    ($func_name: ident, $arg_type: ty, $calc_expr: expr) => {
+        #[wasm_func]
+        fn $func_name(arg: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
+            let num = <$arg_type>::from_le_bytes(arg.try_into().unwrap());
+            let result = $calc_expr(num)?;
+            Ok(result.into_wasm_output())
+        }
+    };
+}
+
+macro_rules! define_complex_func {
+    ($func_name: ident, $calc_expr: expr) => {
+        #[wasm_func]
+        fn $func_name(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
+            let num = decode_complex(arg1, arg2);
+            let result = $calc_expr(num);
+            result.into_wasm_output()
+        }
+    };
+}
+
+macro_rules! define_float_method_func {
+    ($method: ident) => {
+        define_func!($method, f64, |num: f64| num.$method());
+    };
+}
+
+macro_rules! define_complex_method_func {
+    ($method: ident) => {
+        paste! {
+            #[wasm_func]
+            fn [<$method _complex>](arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
+                let num = decode_complex(arg1, arg2);
+                let result = num.$method();
+                result.into_wasm_output()
+            }
+        }
+    };
+}
+
+macro_rules! define_method_func_with_complex {
+    ($func_name: ident) => {
+        define_float_method_func!($func_name);
+        define_complex_method_func!($func_name);
+    };
 }
 
 // Special Functions
@@ -98,22 +163,8 @@ define_special_func_with_complex!(gamma);
 define_special_func_with_complex!(digamma);
 define_special_func_with_complex!(erf);
 define_special_func_2_with_complex!(beta);
-
-#[wasm_func]
-fn zeta(arg: &[u8]) -> Result<Vec<u8>, scirs2_special::SpecialError> {
-    let x = f64::from_le_bytes(arg.try_into().unwrap());
-    let y = scirs2_special::zeta(x)?;
-    Ok(y.to_le_bytes().to_vec())
-}
-
-#[wasm_func]
-fn zeta_complex(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
-    let re = f64::from_le_bytes(arg1.try_into().unwrap());
-    let im = f64::from_le_bytes(arg2.try_into().unwrap());
-    let z = Complex64::new(re, im);
-    let y = spfunc::zeta::zeta(z);
-    y.into_wasm_output()
-}
+define_failable_func!(zeta, f64, |x: f64| scirs2_special::zeta(x));
+define_complex_func!(zeta_complex, |z: Complex64| spfunc::zeta::zeta(z));
 
 // Number Theory
 
@@ -135,6 +186,9 @@ fn extended_gcd(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
     ciborium::ser::into_writer(&(result.gcd, result.x, result.y), &mut out).unwrap();
     out
 }
+
+define_func!(nth_prime, u64, |n: u64| nt_funcs::nth_prime(n));
+define_func!(prime_pi, u64, |n: u64| nt_funcs::prime_pi(n));
 
 // Rational / Fraction
 
@@ -278,7 +332,7 @@ fn decode_complex_seq(arg: &[u8]) -> impl Iterator<Item = Complex64> {
 }
 
 #[wasm_func]
-fn parse_complex(arg: &[u8]) -> Result<Vec<u8>, ParseComplexError<ParseFloatError>> {
+fn parse_complex(arg: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
     let src = String::from_utf8(arg.to_vec())
         .unwrap()
         .replace("\u{2212}", "-");
@@ -322,53 +376,22 @@ fn complex_pow_complex(arg1: &[u8], arg2: &[u8], arg3: &[u8], arg4: &[u8]) -> Ve
     result.into_wasm_output()
 }
 
-macro_rules! define_real_func {
-    ($func_name: ident) => {
-        #[wasm_func]
-        fn $func_name(arg: &[u8]) -> Vec<u8> {
-            let num = f64::from_le_bytes(arg.try_into().unwrap());
-            let result = num.$func_name();
-            result.into_wasm_output()
-        }
-    };
-}
+define_complex_method_func!(sin);
+define_complex_method_func!(cos);
+define_complex_method_func!(tan);
+define_complex_method_func!(sinh);
+define_complex_method_func!(cosh);
+define_complex_method_func!(tanh);
+define_complex_method_func!(asin);
+define_complex_method_func!(acos);
+define_complex_method_func!(atan);
+define_complex_method_func!(exp);
+define_complex_method_func!(ln);
+define_complex_method_func!(log2);
+define_complex_method_func!(log10);
+define_complex_method_func!(sqrt);
+define_complex_method_func!(cbrt);
 
-macro_rules! define_complex_func {
-    ($func_name: ident) => {
-        paste! {
-            #[wasm_func]
-            fn [<$func_name _complex>](arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
-                let num = decode_complex(arg1, arg2);
-                let result = num.$func_name();
-                result.into_wasm_output()
-            }
-        }
-    };
-}
-
-macro_rules! define_func_with_complex {
-    ($func_name: ident) => {
-        define_real_func!($func_name);
-        define_complex_func!($func_name);
-    };
-}
-
-define_complex_func!(sin);
-define_complex_func!(cos);
-define_complex_func!(tan);
-define_complex_func!(sinh);
-define_complex_func!(cosh);
-define_complex_func!(tanh);
-define_complex_func!(asin);
-define_complex_func!(acos);
-define_complex_func!(atan);
-define_complex_func!(exp);
-define_complex_func!(ln);
-define_complex_func!(log2);
-define_complex_func!(log10);
-define_complex_func!(sqrt);
-define_complex_func!(cbrt);
-
-define_func_with_complex!(asinh);
-define_func_with_complex!(acosh);
-define_func_with_complex!(atanh);
+define_method_func_with_complex!(asinh);
+define_method_func_with_complex!(acosh);
+define_method_func_with_complex!(atanh);

@@ -16,7 +16,7 @@ It is a pity that Typst doesn't currently support custom types and overloading o
 To use these number types you have to first import the corresponding sub-module:
 
 ```typ
-#import "@preview/peano:0.1.0"
+#import "@preview/peano:0.1.1"
 #import peano.number: rational as q, complex as c
 ```
 
@@ -25,7 +25,7 @@ Each sub-module contains a method called `from`, by which you can directly creat
 ### Rational numbers
 
 ```typ
-#import "@preview/peano:0.1.0"
+#import "@preview/peano:0.1.1"
 #import peano.number: rational as q
 
 #q.from("1/2") // from string
@@ -44,7 +44,7 @@ Each sub-module contains a method called `from`, by which you can directly creat
 Currently, `rational.from` supports fraction notation and decimal notation with an optional set of [repeating digits](https://en.wikipedia.org/wiki/Repeating_decimal) enclosed in square brackets.
 
 ```typ
-#import "@preview/peano:0.1.0"
+#import "@preview/peano:0.1.1"
 #import peano.number: rational as q
 
 // normal values
@@ -72,7 +72,7 @@ Currently, `rational.from` supports fraction notation and decimal notation with 
 A rational number can be displayed in both string and math format by using the `rational.to-str` and `rational.to-math` methods.
 
 ```typ
-#import "@preview/peano:0.1.0"
+#import "@preview/peano:0.1.1"
 #import peano.number: rational as q
 
 #let value = q.from(113, 355)
@@ -84,7 +84,7 @@ A rational number can be displayed in both string and math format by using the `
 ### Complex numbers
 
 ```typ
-#import "@preview/peano:0.1.0"
+#import "@preview/peano:0.1.1"
 #import peano.number: complex as c
 
 #c.from("1+2i") // from string
@@ -103,3 +103,16 @@ The `peano.func` sub-module provides a collection of basic mathematic functions.
 ### Special functions
 
 The `peano.func.special` sub-module include special functions such as the gamma function, zeta function, Gauss error function.
+
+---
+
+## Changelog
+
+### `0.1.0`
+
+Initial release.
+
+### `0.1.1`
+
+- Added `gcd`, `lcm` that accepts multiple inputs in `peano.ntheory`.
+- Added prime related functions `prime-pi`, `nth-prime` in `peano.ntheory`.

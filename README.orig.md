@@ -101,3 +101,16 @@ The `{{name}}.func` sub-module provides a collection of basic mathematic functio
 ### Special functions
 
 The `{{name}}.func.special` sub-module include special functions such as the gamma function, zeta function, Gauss error function.
+
+---
+
+## Changelog
+
+### `0.1.0`
+
+Initial release.
+
+### `0.1.1`
+
+- Added `gcd`, `lcm` that accepts multiple inputs in `{{name}}.ntheory`.
+- Added prime related functions `prime-pi`, `nth-prime` in `{{name}}.ntheory`.
