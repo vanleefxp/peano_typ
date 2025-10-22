@@ -45,18 +45,11 @@ Currently, `rational.from` supports fraction notation and decimal notation with 
 #import "@preview/{{name}}:{{version}}"
 #import {{name}}.number: rational as q
 
-// normal values
+// fraction notation
 
 #q.from("1/2")
 #q.from("-2/3") // sign before numerator
 #q.from("5/-4") // sign before denominator
-
-// infinity or indeterminate values
-
-#q.from("1/0")  // infinity
-#q.from("-1/0") // negative infinity
-#q.from("1/-0") // also negative infinity
-#q.from("0/0")  // NaN
 
 // decimal notation
 
@@ -65,6 +58,16 @@ Currently, `rational.from` supports fraction notation and decimal notation with 
 #q.from("3.[142857]")
 #q.from("1.14[514]")
 #q.from("1[2.3]") // repeating part can cross decimal point
+
+// infinity or indeterminate values
+
+#q.from("1/0")  // infinity
+#q.from("inf")
+#q.from("-1/0") // negative infinity
+#q.from("1/-0") // also negative infinity
+#q.from("-inf")
+#q.from("0/0")  // NaN
+#q.from("nan")
 ```
 
 A rational number can be displayed in both string and math format by using the `rational.to-str` and `rational.to-math` methods.
@@ -114,3 +117,4 @@ Initial release.
 
 - Added `gcd`, `lcm` that accepts multiple inputs in `{{name}}.ntheory`.
 - Added prime related functions `prime-pi`, `nth-prime` in `{{name}}.ntheory`.
+- Added `from-bytes` and `to-bytes` for `{{name}}.number.complex`

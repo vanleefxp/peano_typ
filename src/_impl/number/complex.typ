@@ -16,9 +16,10 @@
   )
 }
 
-#let decode-complex(src) = {
-  let re = float.from-bytes(src.slice(0, 8))
-  let im = float.from-bytes(src.slice(8))
+#let /*pub*/ from-bytes(src) = {
+  let size = calc.div-euclid(src.len(), 2)
+  let re = float.from-bytes(src.slice(0, size))
+  let im = float.from-bytes(src.slice(size))
   make-complex(re, im)
 }
 
@@ -49,7 +50,7 @@
     ) {
       make-complex(float(src), 0.0)
     } else if type(src) == str {
-      decode-complex(
+      from-bytes(
         math-utils-wasm.parse_complex(bytes(src))
       )
     } else if type(src) == array {
@@ -60,6 +61,12 @@
   } else {
     complex-from-pair(..args)
   }
+}
+
+#let /*pub*/ to-bytes(z, size: 8) = {
+  let z = complex(z)
+  let (re, im) = z
+  re.to-bytes(size: size) + im.to-bytes(size: size)
 }
 
 #let encode-complex-seq(values) = {
@@ -124,7 +131,7 @@
   if args.pos().len() == 0 {
     zero
   } else {
-    decode-complex(
+    from-bytes(
       math-utils-wasm.complex_add(encode-complex-seq(args.pos())),
     )
   }
@@ -134,7 +141,7 @@
   if args.pos().len() == 0 {
     one
   } else {
-    decode-complex(
+    from-bytes(
       math-utils-wasm.complex_mul(encode-complex-seq(args.pos())),
     )
   }
@@ -149,7 +156,7 @@
 #let /*pub*/ div(z1, z2) = {
   let z1 = complex(z1)
   let z2 = complex(z2)
-  decode-complex(
+  from-bytes(
     math-utils-wasm.complex_div(
       z1.re.to-bytes(),
       z1.im.to-bytes(),
@@ -165,7 +172,7 @@
     z2 = float(z2)
   }
   if type(z2) == float {
-    decode-complex(
+    from-bytes(
       math-utils-wasm.complex_pow_real(
         z1.re.to-bytes(),
         z1.im.to-bytes(),
@@ -174,7 +181,7 @@
     )
   } else {
     let z2 = complex(z2)
-    decode-complex(
+    from-bytes(
       math-utils-wasm.complex_pow_complex(
         z1.re.to-bytes(),
         z1.im.to-bytes(),

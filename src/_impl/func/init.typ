@@ -40,6 +40,17 @@
   }
 }
 
+#let define-func(func-name) = {
+  let func = math-utils-funcs.at(func-name)
+  x => {
+    if is-complex(x) {
+      panic("function `" + func + "` does not support complex input.")
+    } else {
+      call-wasm-real-func(func, x)
+    }
+  }
+}
+
 #let define-func-with-complex(func-name) = {
   let real-func = math-utils-funcs.at(func-name)
   let complex-func = math-utils-funcs.at(func-name + "_complex")

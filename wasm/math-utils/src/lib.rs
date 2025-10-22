@@ -7,6 +7,7 @@ use num::pow::Pow;
 use num::{One, Zero};
 use num_prime::nt_funcs;
 use wasm_minimal_protocol::*;
+use puruspe::bessel;
 
 mod complex;
 mod frac;
@@ -165,6 +166,31 @@ define_special_func_with_complex!(erf);
 define_special_func_2_with_complex!(beta);
 define_failable_func!(zeta, f64, |x: f64| scirs2_special::zeta(x));
 define_complex_func!(zeta_complex, |z: Complex64| spfunc::zeta::zeta(z));
+
+define_func!(airy_ai, f64, |x: f64| scirs2_special::ai(x));
+define_complex_func!(airy_ai_complex, |x: Complex64| {
+    scirs2_special::ai_complex(x)
+});
+define_func!(airy_bi, f64, |x: f64| scirs2_special::bi(x));
+define_complex_func!(airy_bi_complex, |x: Complex64| {
+    scirs2_special::bi_complex(x)
+});
+
+#[wasm_func]
+fn bessel_jn(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
+    let n = u32::from_le_bytes(arg1.try_into().unwrap());
+    let x = f64::from_le_bytes(arg2.try_into().unwrap());
+    let result = bessel::Jn(n, x);
+    result.into_wasm_output()
+}
+
+#[wasm_func]
+fn bessel_in(arg1: &[u8], arg2: &[u8]) -> Vec<u8> {
+    let n = u32::from_le_bytes(arg1.try_into().unwrap());
+    let x = f64::from_le_bytes(arg2.try_into().unwrap());
+    let result = bessel::Yn(n, x);
+    result.into_wasm_output()
+}
 
 // Number Theory
 

@@ -1,8 +1,10 @@
 /// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Complex_number")[complex numbers] $CC$
 
 #import "../_impl/number/complex.typ": (
+  from-bytes,
   is-complex as is_,
   complex as from,
+  to-bytes,
   i,
   neg-i,
   zero,

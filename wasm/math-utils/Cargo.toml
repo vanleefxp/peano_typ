@@ -20,6 +20,10 @@ spfunc = "0.1.3"
 thiserror = "2.0.17"
 anyhow = "1.0.100"
 num-prime = "0.4.4"
+special = "0.11.4"
+puruspe = "0.4.2"
+# special-fun = "0.3.0"
+# complex-bessel-rs = "1.3.0"
 
 [profile.release]
 lto = true

@@ -42,8 +42,8 @@
 #let /*pub*/ egcd(a, b) = {
   cbor(
     math-utils-wasm.extended_gcd(
-      a.to-bytes(endian: "little"),
-      b.to-bytes(endian: "little"),
+      a.to-bytes(),
+      b.to-bytes(),
     )
   )
 }
@@ -52,7 +52,7 @@
 
 /// Gives out the $n$#super[th] prime number.
 ///
-/// - n (int): the $n$ value for $n$#super[th] prime
+/// - n (int): the $n$ value for $n$#super[th] prime, counting from 1, i.e. ``typ nth-prime(1)`` returns ``typ 2``.
 /// -> int
 #let /*pub*/ nth-prime(n) = {
   int.from-bytes(math-utils-wasm.nth_prime(n.to-bytes()))
