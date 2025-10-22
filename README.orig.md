@@ -118,3 +118,5 @@ Initial release.
 - Added `gcd`, `lcm` that accepts multiple inputs in `{{name}}.ntheory`.
 - Added prime related functions `prime-pi`, `nth-prime` in `{{name}}.ntheory`.
 - Added `from-bytes` and `to-bytes` for `{{name}}.number.complex`
+- Fixed the problem that sign cannot be correctly handled when creating a `rational` by ratio.
+- Used [`typsy.class`](https://github.com/patrick-kidger/typsy?tab=readme-ov-file#classes) to represent complex and rational numbers.
