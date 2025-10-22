@@ -5,5 +5,5 @@
 
 #let /*pub*/ to-str(z) = {
   let z = complex(z)
-  strfmt("{re:.2}{im:+.2}i", re: z.re, im: z.im)
+  strfmt("{re:}{im:+}i", re: z.re, im: z.im)
 }

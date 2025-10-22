@@ -1,6 +1,6 @@
 // -> number/complex/arith.typ
 
-#import "init.typ": complex, from-bytes, encode-complex-seq
+#import "init.typ": complex, from-bytes, to-bytes, encode-complex-seq
 #let math-utils-wasm = plugin("../../math-utils.wasm")
 
 #let /*pub*/ abs(z) = {

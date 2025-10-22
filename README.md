@@ -121,4 +121,4 @@ Initial release.
 - Added prime related functions `prime-pi`, `nth-prime` in `peano.ntheory`.
 - Added `from-bytes` and `to-bytes` for `peano.number.complex`
 - Fixed the problem that sign cannot be correctly handled when creating a `rational` by ratio.
-- Used `typsy.class` to represent complex and rational numbers.
+- Used [`typsy.class`](https://github.com/patrick-kidger/typsy?tab=readme-ov-file#classes) to represent complex and rational numbers.

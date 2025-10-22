@@ -1,7 +1,7 @@
 // -> number/rational/arith.typ
 
-#let math-utils-wasm = plugin("../../math-utils.wasm")
 #import "init.typ": rational, from-bytes, to-bytes, encode-rational-seq
+#let math-utils-wasm = plugin("../../math-utils.wasm")
 
 #let /*pub*/ add(..args) = {
   let args = args.pos()
@@ -56,7 +56,6 @@
       to-bytes(n),
       p.to-bytes()
     ),
-    number-type
   )
 }
 
@@ -67,7 +66,6 @@
       to-bytes(n),
       max-den.to-bytes()
     ),
-    number-type,
   )
 }
 
