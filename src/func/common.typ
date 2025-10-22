@@ -1,3 +1,4 @@
+// This is a program-generated file. Do not edit it directly.
 #import "../_impl/func/common.typ": (
   exp,
   ln,
@@ -18,4 +19,3 @@
   arg,
 )
 
-// This is a program-generated file. Do not edit it directly.

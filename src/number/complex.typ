@@ -1,5 +1,6 @@
 /// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Complex_number")[complex numbers] $CC$
 
+// This is a program-generated file. Do not edit it directly.
 #import "../_impl/number/complex.typ": (
   from-bytes,
   is-complex as is_,
@@ -27,4 +28,3 @@
   eq,
 )
 
-// This is a program-generated file. Do not edit it directly.

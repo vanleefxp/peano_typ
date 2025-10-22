@@ -1,5 +1,6 @@
 /// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Rational_number")[rational numbers] $QQ$ in the form of fractions
 
+// This is a program-generated file. Do not edit it directly.
 #import "../_impl/number/rational.typ": (
   is-rational as is_,
   inf,
@@ -27,4 +28,3 @@
   to-math,
 )
 
-// This is a program-generated file. Do not edit it directly.

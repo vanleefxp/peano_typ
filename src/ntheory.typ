@@ -1,5 +1,6 @@
 /// number theory operations
 
+// This is a program-generated file. Do not edit it directly.
 #import "_impl/ntheory.typ": (
   prime-fac,
   gcd,
@@ -9,4 +10,3 @@
   prime-pi,
 )
 
-// This is a program-generated file. Do not edit it directly.

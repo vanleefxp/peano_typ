@@ -154,14 +154,10 @@
 }
 
 #let /*pub*/ div(z1, z2) = {
-  let z1 = complex(z1)
-  let z2 = complex(z2)
   from-bytes(
     math-utils-wasm.complex_div(
-      z1.re.to-bytes(),
-      z1.im.to-bytes(),
-      z2.re.to-bytes(),
-      z2.im.to-bytes(),
+      to-bytes(z1),
+      to-bytes(z2),
     ),
   )
 }
@@ -174,19 +170,15 @@
   if type(z2) == float {
     from-bytes(
       math-utils-wasm.complex_pow_real(
-        z1.re.to-bytes(),
-        z1.im.to-bytes(),
+        to-bytes(z1),
         z2.to-bytes(),
       ),
     )
   } else {
-    let z2 = complex(z2)
     from-bytes(
       math-utils-wasm.complex_pow_complex(
-        z1.re.to-bytes(),
-        z1.im.to-bytes(),
-        z2.re.to-bytes(),
-        z2.im.to-bytes(),
+        to-bytes(z1),
+        to-bytes(z2),
       ),
     )
   }

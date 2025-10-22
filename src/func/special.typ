@@ -1,5 +1,6 @@
 /// Special mathematic functions.
 
+// This is a program-generated file. Do not edit it directly.
 #import "../_impl/func/special.typ": (
   gamma,
   digamma,
@@ -10,4 +11,3 @@
   euler-gamma,
 )
 
-// This is a program-generated file. Do not edit it directly.
