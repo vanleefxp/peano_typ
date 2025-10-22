@@ -1,26 +1,53 @@
 // -> number/rational.typ
 /// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Rational_number")[rational numbers] $QQ$ in the form of fractions
 
+#import "@preview/typsy:0.2.0": class, Int, Bool, matches
 #import "init.typ": *
 #let math-utils-wasm = plugin("../math-utils.wasm")
 #let number-type = "rational"
 
+#let Rational = class(
+  fields: (
+    sign: Bool,
+    num: Int,
+    den: Int,
+  ),
+  tag: () => {}
+)
+
 #let make-rational(sign, n, d) = {
-  (
-    (number-label): number-type,
+  (Rational.new)(
     sign: sign,
     num: n,
     den: d,
   )
 }
 
+#let /*pub*/ from-bytes(buffer) = {
+  let (sign, num, den) = cbor(buffer)
+  make-rational(sign, num, den)
+}
+
+#let /*pub*/ to-bytes(n) = {
+  cbor.encode((sign: n.sign, num: n.num, den: n.den))
+}
+
 #let /*pub as is_*/ is-rational(obj) = {
-  is-number-type(obj, number-type)
+  matches(Rational, obj)
+}
+
+#let encode-rational-seq(obj) = {
+  cbor.encode(obj.map(((sign, num, den)) => (sign: sign, num: num, den: den)))
+}
+
+#let decode-rational-seq(buffer) = {
+  cbor(buffer).map(args => (Rational.new)(..args))
 }
 
 #let fraction-from-ratio(n, d) = {
-  let sign = n >= 0
+  let sign = (n >= 0 and d >= 0) or (n < 0 and d < 0)
   let n = calc.abs(n)
+  let d = calc.abs(d)
   make-rational(sign, n, d)
 }
 
@@ -42,15 +69,9 @@
       src = str(src)
     }
     if type(src) == str {
-      decode-number(
-        math-utils-wasm.parse_fraction(bytes(src)),
-        number-type,
-      )
+      from-bytes(math-utils-wasm.parse_fraction(bytes(src)))
     } else if type(src) == float {
-      decode-number(
-        math-utils-wasm.fraction_from_float(src.to-bytes()),
-        number-type,
-      )
+      from-bytes(math-utils-wasm.fraction_from_float(src.to-bytes()))
     } else if type(src) == int {
       fraction-from-ratio(src, 1)
     } else {
@@ -66,43 +87,33 @@
 
 #let /*pub*/ add(..args) = {
   let args = args.pos()
-  let encoded-args = encode-numbers(args.map(rational))
-  decode-number(
-    math-utils-wasm.fraction_add(encoded-args),
-    number-type,
-  )
+  from-bytes(math-utils-wasm.fraction_add(encode-rational-seq(args.map(rational))))
 }
 
 #let /*pub*/ mul(..args) = {
   let args = args.pos()
-  let encoded-args = encode-numbers(args.map(rational))
-  decode-number(
-    math-utils-wasm.fraction_mul(encoded-args),
-    number-type,
-  )
+  from-bytes(math-utils-wasm.fraction_mul(encode-rational-seq(args.map(rational))))
 }
 
 #let /*pub*/ sub(n, m) = {
   let n = rational(n)
   let m = rational(m)
-  decode-number(
+  from-bytes(
     math-utils-wasm.fraction_sub(
-      encode-number(n),
-      encode-number(m)
+      to-bytes(n),
+      to-bytes(m)
     ),
-    number-type
   )
 }
 
 #let /*pub*/ div(n, m) = {
   let n = rational(n)
   let m = rational(m)
-  decode-number(
+  from-bytes(
     math-utils-wasm.fraction_div(
-      encode-number(n),
-      encode-number(m)
+      to-bytes(n),
+      to-bytes(m)
     ),
-    number-type
   )
 }
 
@@ -122,9 +133,9 @@
 #let /*pub*/ pow(n, p) = {
   let n = rational(n)
   assert.eq(type(p), int)
-  decode-number(
+  from-bytes(
     math-utils-wasm.fraction_pow(
-      encode-number(n),
+      to-bytes(n),
       p.to-bytes()
     ),
     number-type
@@ -133,9 +144,9 @@
 
 #let /*pub*/ limit-den(n, max-den) = {
   let n = rational(n)
-  decode-number(
+  from-bytes(
     math-utils-wasm.fraction_limit_den(
-      encode-number(n),
+      to-bytes(n),
       max-den.to-bytes()
     ),
     number-type,

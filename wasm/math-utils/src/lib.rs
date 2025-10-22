@@ -67,19 +67,6 @@ impl_wasm_conversion_for_num!(
 impl_wasm_conversion_for_complex!(f64, 8);
 impl_wasm_conversion_for_complex!(f32, 4);
 
-// define_func!(add, |x: f64, y: f64| x + y);
-
-// macro_rules! define_func {
-//     ($func_name: ident, $arg_type: ty, $calc_expr: expr) => {
-//         #[wasm_func]
-//         fn $func_name(arg: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
-//             let num = <$arg_type>::from_wasm_input(arg)?;
-//             let result = $calc_expr(num)?;
-//             result.into_wasm_output()
-//         }
-//     };
-// }
-
 macro_rules! define_float_method_func {
     ($method: ident) => {
         define_func!($method, |num: f64| num.$method());

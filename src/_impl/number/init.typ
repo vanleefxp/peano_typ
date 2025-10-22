@@ -8,16 +8,6 @@
   )
 }
 
-#let encode-number(number) = {
-  number.remove(number-label)
-  return cbor.encode(number)
-}
-
-#let decode-number(data, type) = {
-  let result = cbor(data)
-  ((number-label): type, ..result)
-}
-
 #let encode-numbers(nums) = {
   cbor.encode(nums.map(num => {
     let num = num

@@ -1,16 +1,17 @@
 // -> number/complex.typ
 /// Representation and arithmetics for #link("https://en.wikipedia.org/wiki/Complex_number")[complex numbers] $CC$
 
+#import "@preview/typsy:0.2.0": class, Float, matches
 #import "init.typ": *
 #let math-utils-wasm = plugin("../math-utils.wasm")
-#let number-type = "complex"
 
-#let float-regex-src = `(?:[0-9]+\.[0-9]+|\.?[0-9]+)(?:e[0-9]+)?|inf|nan`.text
-#let complex-regex = regex(`([\+\-]?`.text + float-regex-src + `)\s*([\+\-]\s*`.text + float-regex-src + ")i")
+#let Complex = class(
+  fields: (re: Float, im: Float),
+  tag: () => {},
+)
 
 #let make-complex(re, im) = {
-  (
-    (number-label): number-type,
+  (Complex.new)(
     re: float(re),
     im: float(im),
   )
@@ -35,7 +36,7 @@
   make-complex(re, im)
 }
 
-#let /*pub as is_*/ is-complex(obj) = is-number-type(obj, "complex")
+#let /*pub as is_*/ is-complex(obj) = matches(Complex, obj)
 
 #let /*pub as from*/ complex(..args) = {
   let args = args.pos()
