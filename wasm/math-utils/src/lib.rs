@@ -7,6 +7,7 @@ use num::pow::Pow;
 use num::{One, Zero};
 use num_prime::nt_funcs;
 use puruspe::bessel;
+use special::LambertW;
 use wasm_minimal_protocol::*;
 
 use math_utils_proc_macro::define_func;
@@ -120,15 +121,15 @@ define_func!(beta, |x1: f64, x2: f64| scirs2_special::beta(x1, x2));
 define_func!(beta_complex, |z1: c64, z2: c64| {
     scirs2_special::beta_complex(z1, z2)
 });
-
+define_func!(lambert_w, |x: f64| x.lambert_w0());
 define_func!(zeta, |x: f64| scirs2_special::zeta(x).unwrap());
 define_func!(zeta_complex, |z: c64| spfunc::zeta::zeta(z));
 define_func!(airy_ai, |x: f64| scirs2_special::ai(x));
 define_func!(airy_ai_complex, |x: c64| scirs2_special::ai_complex(x));
 define_func!(airy_bi, |x: f64| scirs2_special::bi(x));
 define_func!(airy_bi_complex, |x: c64| scirs2_special::bi_complex(x));
-define_func!(bessel_jn, |n: u32, x: f64| bessel::Jn(n, x));
-define_func!(bessel_yn, |n: u32, x: f64| bessel::Yn(n, x));
+define_func!(bessel_jn, |n: i64, x: f64| bessel::Jn(n as u32, x));
+define_func!(bessel_yn, |n: i64, x: f64| bessel::Yn(n as u32, x));
 
 // Number Theory
 

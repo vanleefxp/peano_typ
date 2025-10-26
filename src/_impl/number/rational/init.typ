@@ -1,20 +1,33 @@
 // -> number/rational/init.typ
 
-#import "@preview/typsy:0.2.0": class, Bool, Int, matches
+#import "@preview/elembic:1.1.1" as e
 #let math-utils-wasm = plugin("../../math-utils.wasm")
 
-#let Rational = class(
-  name: "rational",
+#let Rational = e.types.declare(
+  "rational",
+  prefix: "peano.number",
   fields: (
-    sign: Bool,
-    num: Int,
-    den: Int,
+    e.field(
+      "sign",
+      bool,
+      doc: "SIgn of the rational number. `true` for non-negative and `false` for negative."
+    ),
+    e.field(
+      "num",
+      int,
+      doc: "Numerator. Always positive.",
+    ),
+    e.field(
+      "den",
+      int,
+      doc: "Denominator. Always positive.",
+    ),
   ),
-  tag: () => {}
+  doc: "Representation of a rational number in the form of fraction.",
 )
 
 #let make-rational(sign, n, d) = {
-  (Rational.new)(
+  Rational(
     sign: sign,
     num: n,
     den: d,
@@ -31,7 +44,7 @@
 }
 
 #let /*pub as is_*/ is-rational(obj) = {
-  matches(Rational, obj)
+  e.tid(obj) == e.tid(Rational)
 }
 
 #let encode-rational-seq(obj) = {

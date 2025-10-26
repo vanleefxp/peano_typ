@@ -8,7 +8,7 @@
 /// - n (int): the number to take prime factors
 /// -> array
 #let /*pub*/ prime-fac(n) = {
-  cbor(math-utils-wasm.prime_factors(n.to-bytes(endian: "little")))
+  cbor(math-utils-wasm.prime_factors(n.to-bytes(endian)))
 }
 
 /// An alternative version of `calc.gcd` tat supports multiple numbers as input.

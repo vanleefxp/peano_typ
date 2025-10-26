@@ -8,6 +8,11 @@
   erf,
   zeta,
   beta,
+  airy-ai,
+  airy-bi,
+  lambert-w,
   euler-gamma,
+  bessel-j,
+  bessel-y,
 )
 

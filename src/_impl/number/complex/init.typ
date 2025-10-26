@@ -1,17 +1,29 @@
 // -> number/complex/init.typ
 
-#import "@preview/typsy:0.2.0": class, Float, Int, Bool, matches
+#import "@preview/elembic:1.1.1" as e
 #let math-utils-wasm = plugin("../../math-utils.wasm")
 
-#let Complex = class(
-  name: "complex",
-  fields: (re: Float, im: Float),
-  tag: () => {},
+#let Complex = e.types.declare(
+  "complex",
+  prefix: "peano.number",
+  fields: (
+    e.field(
+      "re",
+      float,
+      doc: "Real part.",
+    ),
+    e.field(
+      "im",
+      float,
+      doc: "Imaginary part.",
+    ),
+  ),
+  doc: "Representation of a complex number.",
 )
 
 
 #let make-complex(re, im) = {
-  (Complex.new)(
+  Complex(
     re: float(re),
     im: float(im),
   )
@@ -36,7 +48,9 @@
   make-complex(re, im)
 }
 
-#let /*pub as is_*/ is-complex(obj) = matches(Complex, obj)
+#let /*pub as is_*/ is-complex(obj) = {
+  e.tid(obj) == e.tid(Complex)
+}
 
 #let /*pub as from*/ complex(..args) = {
   let args = args.pos()

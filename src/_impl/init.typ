@@ -1,4 +1,4 @@
-#import "@preview/typsy:0.2.0": matches, Class
+#import "@preview/elembic:1.1.1" as e
 #let math-utils-wasm = plugin("math-utils.wasm")
 
 #import "number/complex/init.typ": (
@@ -34,9 +34,9 @@
 
 #let type-name(type) = {
   if std.type(type) == std.type {
-    str(type)
-  } else if matches(Class, type) {
-    type.name
+    repr(type)
+  } else if e.tid(type) != none {
+    e.data(type).id.name
   } else {
     panic(repr(type) + "is not a valid type.")
   }
@@ -45,8 +45,8 @@
 #let cast(obj, type) = {
   if std.type(type) == std.type {
     type(obj)
-  } else if matches(Class, type) {
-    casting.at(type.name)(obj)
+  } else if e.tid(type) != none {
+    casting.at(e.data(type).id.name)(obj)
   } else {
     panic(repr(type) + "is not a valid type.")
   }
@@ -80,7 +80,7 @@
 #let real-funcs = {
   let func-names = (
     "asinh", "acosh", "atanh",
-    "airy_ai", "airy_bi", "gamma", "digamma", "erf", "zeta"
+    "airy_ai", "airy_bi", "gamma", "digamma", "erf", "zeta", "lambert_w"
   )
   func-names.map(
     key => (key, convert-wasm-func(key, (float,), float))
