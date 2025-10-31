@@ -10,7 +10,8 @@
   mul,
   sub,
   div,
+  reci,
   pow,
   eq,
+  unit,
 )
-

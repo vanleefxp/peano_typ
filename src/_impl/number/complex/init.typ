@@ -3,7 +3,7 @@
 #import "@preview/elembic:1.1.1" as e
 #let math-utils-wasm = plugin("../../math-utils.wasm")
 
-#let Complex = e.types.declare(
+#let complex = e.types.declare(
   "complex",
   prefix: "peano.number",
   fields: (
@@ -23,7 +23,7 @@
 
 
 #let make-complex(re, im) = {
-  Complex(
+  complex(
     re: float(re),
     im: float(im),
   )
@@ -48,15 +48,15 @@
   make-complex(re, im)
 }
 
-#let /*pub as is_*/ is-complex(obj) = {
-  e.tid(obj) == e.tid(Complex)
+#let /*pub*/ is_(obj) = {
+  e.tid(obj) == e.tid(complex)
 }
 
-#let /*pub as from*/ complex(..args) = {
+#let /*pub*/ from(..args) = {
   let args = args.pos()
   if args.len() == 1 {
     let (src,) = args
-    if is-complex(src) {
+    if is_(src) {
       src
     } else if (
       type(src) == int or
@@ -79,14 +79,14 @@
 }
 
 #let /*pub*/ to-bytes(z, size: 8) = {
-  let z = complex(z)
+  let z = from(z)
   let (re, im) = z
   re.to-bytes(size: size) + im.to-bytes(size: size)
 }
 
 #let encode-complex-seq(values) = {
   values.map(it => {
-    let z = complex(it)
+    let z = from(it)
     z.re.to-bytes() + z.im.to-bytes()
   }).join()
 }

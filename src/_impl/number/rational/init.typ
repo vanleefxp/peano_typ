@@ -3,7 +3,7 @@
 #import "@preview/elembic:1.1.1" as e
 #let math-utils-wasm = plugin("../../math-utils.wasm")
 
-#let Rational = e.types.declare(
+#let rational = e.types.declare(
   "rational",
   prefix: "peano.number",
   fields: (
@@ -27,7 +27,7 @@
 )
 
 #let make-rational(sign, n, d) = {
-  Rational(
+  rational(
     sign: sign,
     num: n,
     den: d,
@@ -43,8 +43,8 @@
   cbor.encode((sign: n.sign, num: n.num, den: n.den))
 }
 
-#let /*pub as is_*/ is-rational(obj) = {
-  e.tid(obj) == e.tid(Rational)
+#let /*pub*/ is_(obj) = {
+  e.tid(obj) == e.tid(rational)
 }
 
 #let encode-rational-seq(obj) = {
@@ -52,7 +52,7 @@
 }
 
 #let decode-rational-seq(buffer) = {
-  cbor(buffer).map(args => (Rational.new)(..args))
+  cbor(buffer).map(args => (rational.new)(..args))
 }
 
 #let fraction-from-ratio(n, d) = {
@@ -62,11 +62,11 @@
   make-rational(sign, n, d)
 }
 
-#let /*pub as from*/ rational(..args) = {
+#let /*pub*/ from(..args) = {
   let args = args.pos()
   if args.len() == 1 {
     let (src,) = args
-    if is-rational(src) {
+    if is_(src) {
       return src
     }
     if type(src) == decimal {

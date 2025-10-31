@@ -1,6 +1,6 @@
 #import "../number/complex/init.typ" as c: (
-  complex,
-  is-complex,
+  from,
+  is_,
   make-complex,
   to-bytes as c_to-bytes,
   from-bytes as c_from-bytes,
@@ -18,7 +18,7 @@
   let real-func = calc-funcs.at(func-name)
   let complex-func = complex-funcs.at(func-name)
   x => {
-    if is-complex(x) {
+    if is_(x) {
       complex-func(x)
     } else {
       let x = if type(x) == angle {
@@ -34,7 +34,7 @@
 #let define-func(func-name) = {
   let func = math-utils-funcs.at(func-name)
   x => {
-    if is-complex(x) {
+    if is_(x) {
       panic("function `" + func + "` does not support complex input.")
     } else {
       func(x)
@@ -46,7 +46,7 @@
   let real-func = real-funcs.at(func-name)
   let complex-func = complex-funcs.at(func-name, default: none)
   x => {
-    if is-complex(x) {
+    if is_(x) {
       if complex-func == none {
         panic("function `" + func-name + "` does not support complex input.")
       } else {
@@ -62,7 +62,7 @@
   let real-func = real-funcs.at(func-name)
   let complex-func = complex-funcs.at(func-name)
   (x1, x2) => {
-    if is-complex(x1) or is-complex(x2) {
+    if is_(x1) or is_(x2) {
       complex-func(x1, x2)
     } else {
       real-func(x1, x2)

@@ -1,14 +1,24 @@
+use std::cmp::Ordering;
+use std::fmt::{Debug, Display};
+use std::iter::{Product, Sum};
+use std::ops::{Add, AddAssign, Deref, Div, Mul, MulAssign, Neg, Sub};
 use std::{num::ParseIntError, str::FromStr};
 
-use anyhow::{Context, bail};
-use fraction::Ratio;
+use anyhow::{Context, anyhow, bail};
+use fraction::{ConstOne, Ratio};
 use fraction::{GenericFraction, Sign, generic::GenericInteger};
-use num::pow::Pow;
-use num::{Zero, integer::Integer};
+use malachite::base::num::arithmetic::traits::{
+    Abs, AbsAssign, NegAssign, Pow, PowAssign, Reciprocal, ReciprocalAssign, Sign as Sign_,
+};
+use malachite::base::num::basic::traits::{
+    Infinity, NaN, NegativeInfinity, NegativeOne, NegativeZero, One, OneHalf, Two, Zero,
+};
+use malachite::{Integer as Mpz, Natural as Mpn, Rational as Mpq};
+use num::{Zero as NumZero, integer::Integer};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MyFrac<T>
+pub struct FracData<T>
 where
     T: Integer + Clone + Copy,
 {
@@ -17,7 +27,63 @@ where
     pub den: T,
 }
 
-impl<T> From<GenericFraction<T>> for MyFrac<T>
+pub trait Ten {
+    const TEN: Self;
+}
+
+impl Ten for Mpn {
+    const TEN: Self = Mpn::const_from(10);
+}
+
+impl Ten for Mpz {
+    const TEN: Self = Mpz::const_from_unsigned(10);
+}
+
+macro_rules! impl_10_for_primitives {
+    ($($t: ty),*$(,)?) => {
+        $(impl Ten for $t {
+            const TEN: Self = 10 as $t;
+        })*
+    };
+}
+impl_10_for_primitives!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+);
+
+pub struct Frac<T>(fraction::GenericFraction<T>)
+where
+    T: Clone + Integer;
+
+impl<T> From<fraction::GenericFraction<T>> for Frac<T>
+where
+    T: Clone + Integer,
+{
+    fn from(value: fraction::GenericFraction<T>) -> Self {
+        Frac(value)
+    }
+}
+
+impl<T> From<Frac<T>> for GenericFraction<T>
+where
+    T: Clone + Integer,
+{
+    fn from(value: Frac<T>) -> Self {
+        value.0
+    }
+}
+
+impl<T> Deref for Frac<T>
+where
+    T: Clone + fraction::Integer,
+{
+    type Target = GenericFraction<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> From<GenericFraction<T>> for FracData<T>
 where
     T: Integer + Clone + Copy,
 {
@@ -25,18 +91,18 @@ where
         match value {
             GenericFraction::Rational(sign, ratio) => {
                 let (num, den) = ratio.into_raw();
-                MyFrac {
+                FracData {
                     sign: sign == Sign::Plus,
                     num,
                     den,
                 }
             }
-            GenericFraction::Infinity(sign) => MyFrac {
+            GenericFraction::Infinity(sign) => FracData {
                 sign: sign == Sign::Plus,
                 num: T::one(),
                 den: T::zero(),
             },
-            GenericFraction::NaN => MyFrac {
+            GenericFraction::NaN => FracData {
                 sign: true,
                 num: T::zero(),
                 den: T::zero(),
@@ -45,7 +111,7 @@ where
     }
 }
 
-impl<T> Into<GenericFraction<T>> for MyFrac<T>
+impl<T> Into<GenericFraction<T>> for FracData<T>
 where
     T: Integer + Clone + Copy,
 {
@@ -61,6 +127,15 @@ where
             let sign = if self.sign { Sign::Plus } else { Sign::Minus };
             GenericFraction::new_raw_signed(sign, self.num, self.den)
         }
+    }
+}
+
+impl<T> Into<Frac<T>> for FracData<T>
+where
+    T: Integer + Clone + Copy,
+{
+    fn into(self) -> Frac<T> {
+        <FracData<T> as Into<GenericFraction<T>>>::into(self).into()
     }
 }
 
@@ -93,66 +168,64 @@ where
     }
 }
 
-impl<T> MyFrac<T>
+impl<T> Frac<T>
 where
     T: Integer + Clone + Copy,
 {
-    pub fn limit_den(self: MyFrac<T>, max_den: T) -> MyFrac<T> {
-        let MyFrac { sign, num, den } = self;
-        if den == T::zero() || den <= max_den {
-            self
-        } else {
-            let (num, den) = limit_den_helper((num, den), max_den).unwrap();
-            MyFrac { sign, num, den }
+    pub fn limit_den(self: Frac<T>, max_den: T) -> Frac<T> {
+        match self.0 {
+            GenericFraction::Rational(sign, ratio) => {
+                let (num, den) = ratio.into_raw();
+                let (num, den) = limit_den_helper((num, den), max_den).unwrap();
+                GenericFraction::Rational(sign, Ratio::new_raw(num, den)).into()
+            }
+            special => special.into(),
         }
     }
 }
 
-// impl<T> Deref for MyFrac<T> where T: Integer + Clone + Copy {
-//     type Target = GenericFraction<T>;
-
-//     fn deref(&self) -> &Self::Target {
-//         if self.den == T::zero() {
-//             if self.num == T::zero() {
-//                 &GenericFraction::NaN
-//             } else {
-//                 let sign = if self.sign { Sign::Plus } else { Sign::Minus };
-//                 Box::new(GenericFraction::Infinity(sign)).as_ref()
-//             }
-//         } else {
-//             let sign = if self.sign { Sign::Plus } else { Sign::Minus };
-//             Box::new(GenericFraction::new_raw_signed(sign, self.num, self.den)).as_ref()
-//         }
-//     }
-// }
-
-impl Pow<i64> for MyFrac<u64> {
+impl Pow<i64> for Frac<u64> {
     type Output = Self;
 
     fn pow(self, rhs: i64) -> Self::Output {
         if rhs == 0 {
-            return MyFrac {
-                sign: true,
-                num: 1,
-                den: 1,
-            };
-        }
-        if rhs == 1 {
-            return self;
-        }
-        let MyFrac { sign, num, den } = self;
-        let sign = sign || rhs % 2 == 0;
-        if rhs > 0 {
-            let (num, den) = (num.pow(rhs as u32), den.pow(rhs as u32));
-            MyFrac { sign, num, den }
+            GenericFraction::ONE.into()
         } else {
-            let (num, den) = (den.pow((-rhs) as u32), num.pow((-rhs) as u32));
-            MyFrac { sign, num, den }
+            match self.0 {
+                GenericFraction::Rational(sign, ratio) => {
+                    let (num, den) = ratio.into_raw();
+                    let sign = match sign {
+                        Sign::Plus => Sign::Plus,
+                        Sign::Minus => {
+                            if rhs % 2 == 0 {
+                                Sign::Plus
+                            } else {
+                                Sign::Minus
+                            }
+                        }
+                    };
+                    if rhs > 0 {
+                        let (num, den) = (num.pow(rhs as u32), den.pow(rhs as u32));
+                        GenericFraction::Rational(sign, Ratio::new_raw(num, den)).into()
+                    } else {
+                        let (num, den) = (den.pow((-rhs) as u32), num.pow((-rhs) as u32));
+                        GenericFraction::Rational(sign, Ratio::new_raw(num, den)).into()
+                    }
+                }
+                GenericFraction::NaN | GenericFraction::Infinity(Sign::Plus) => self,
+                GenericFraction::Infinity(Sign::Minus) => {
+                    if rhs % 2 == 1 {
+                        self
+                    } else {
+                        GenericFraction::Infinity(Sign::Plus).into()
+                    }
+                }
+            }
         }
     }
 }
 
-fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), anyhow::Error> {
+fn split_decimal_notation(src: &str) -> Result<FractionFromDecimalResult, anyhow::Error> {
     let (src, mut exp) = if let Some(idx) = src.find(&['E', 'e']) {
         (
             &src[..idx],
@@ -164,9 +237,9 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
         (&src[..], 0)
     };
     let (src, sign) = match src.chars().nth(0) {
-        Some('-') => (&src[1..], Sign::Minus),
-        Some('+') => (&src[1..], Sign::Plus),
-        _ => (&src[..], Sign::Plus),
+        Some('-') => (&src[1..], false),
+        Some('+') => (&src[1..], true),
+        _ => (&src[..], true),
     };
     if let Some(idx) = src.find('.') {
         // has decimal point
@@ -179,7 +252,14 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
                 let int_part = &before_point[..l_idx];
                 let repeating_part = &before_point[l_idx + 1..r_idx];
                 exp += (before_point[r_idx + 1..].len() + repeating_part.len()) as isize;
-                Ok((sign, int_part.to_string(), repeating_part.to_string(), exp))
+                let int_part = int_part.to_string();
+                let repeating_part = repeating_part.to_string();
+                Ok(FractionFromDecimalResult {
+                    sign,
+                    int_part,
+                    repeating_part,
+                    exp,
+                })
             }
             (Some(l_idx), None) => {
                 // 12[34.5]678
@@ -191,7 +271,12 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
                 exp += before_point_repeating_digits.len() as isize;
                 let mut repeating_part = before_point_repeating_digits.to_string();
                 repeating_part.push_str(&after_point[..r_idx]);
-                Ok((sign, int_part, repeating_part, exp))
+                Ok(FractionFromDecimalResult {
+                    sign,
+                    int_part,
+                    repeating_part,
+                    exp,
+                })
             }
             (None, None) => {
                 match (after_point.find('['), after_point.rfind(']')) {
@@ -202,14 +287,25 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
                         exp -= after_point_int_part.len() as isize;
                         int_part.push_str(after_point_int_part);
                         let repeating_part = &after_point[l_idx + 1..r_idx];
-                        Ok((sign, int_part, repeating_part.to_string(), exp))
+                        let repeating_part = repeating_part.to_string();
+                        Ok(FractionFromDecimalResult {
+                            sign,
+                            int_part,
+                            repeating_part,
+                            exp,
+                        })
                     }
                     (None, None) => {
                         // 1234.5678
                         let mut int_part = before_point.to_string();
                         int_part.push_str(after_point);
                         exp -= after_point.len() as isize;
-                        Ok((sign, int_part, "".to_string(), exp))
+                        Ok(FractionFromDecimalResult {
+                            sign,
+                            int_part,
+                            repeating_part: "".to_string(),
+                            exp,
+                        })
                     }
                     _ => bail!("Bracket for repeating part not match"),
                 }
@@ -224,99 +320,264 @@ fn split_decimal_notation(src: &str) -> Result<(Sign, String, String, isize), an
                 let int_part = &src[..l_idx];
                 let repeating_part = &src[l_idx + 1..r_idx];
                 exp += repeating_part.len() as isize;
-                Ok((sign, int_part.to_string(), repeating_part.to_string(), exp))
+                let int_part = int_part.to_string();
+                let repeating_part = repeating_part.to_string();
+                Ok(FractionFromDecimalResult {
+                    sign,
+                    int_part,
+                    repeating_part,
+                    exp,
+                })
             }
             (None, None) => {
                 // 12345678
-                Ok((sign, src.to_string(), "".to_string(), exp))
+                Ok(FractionFromDecimalResult {
+                    sign,
+                    int_part: src.to_string(),
+                    repeating_part: "".to_string(),
+                    exp,
+                })
             }
             _ => bail!("Invalid fraction format"),
         }
     }
 }
 
-fn empty_safe_parse<T>(src: &str) -> Result<T, ParseIntError>
-where
-    T: FromStr<Err = ParseIntError> + Zero,
-{
-    if src.is_empty() {
-        Ok(T::zero())
-    } else {
-        T::from_str(src)
-    }
+// fn empty_safe_parse<T>(src: &str) -> Result<T, ParseIntError>
+// where
+//     T: FromStr<Err = ParseIntError> + NumZero,
+// {
+//     if src.is_empty() {
+//         Ok(T::zero())
+//     } else {
+//         T::from_str(src)
+//     }
+// }
+
+// fn fraction_from_decimal<T>(
+//     sign: Sign,
+//     int_part: &str,
+//     repeating_part: &str,
+//     exp: isize,
+// ) -> Result<GenericFraction<T>, anyhow::Error>
+// where
+//     T: GenericInteger
+//         + Clone
+//         + Copy
+//         + FromStr<Err = ParseIntError>
+//         + Pow<u64, Output = T>
+//         + Into<GenericFraction<T>>,
+// {
+//     if !int_part.chars().all(|c| c.is_digit(10)) {
+//         bail!("Invalid integer part")
+//     }
+//     if !repeating_part.chars().all(|c| c.is_digit(10)) {
+//         bail!("Invalid repeating part")
+//     }
+//     let repeating_part_len = repeating_part.len() as u64;
+//     let int_part: T = empty_safe_parse(int_part)?;
+//     let mut result: GenericFraction<T> = int_part.into();
+//     if repeating_part_len > 0 {
+//         let repeat_den: T = T::_10().pow(repeating_part_len) - T::_1();
+//         let repeat_num: T = empty_safe_parse(repeating_part)?;
+//         result += if let Some(fr) = GenericFraction::new_generic(Sign::Plus, repeat_num, repeat_den)
+//         {
+//             fr
+//         } else {
+//             bail!("Invalid fraction format")
+//         };
+//     }
+//     if exp > 0 {
+//         result *= T::_10().pow(exp as u64);
+//     } else if exp < 0 {
+//         result /= T::_10().pow((-exp) as u64);
+//     }
+//     match sign {
+//         Sign::Plus => Ok(result),
+//         Sign::Minus => Ok(-result),
+//     }
+// }
+
+// pub fn parse_fraction<T>(src: &str) -> Result<GenericFraction<T>, anyhow::Error>
+// where
+//     T: GenericInteger
+//         + Clone
+//         + Copy
+//         + FromStr<Err = ParseIntError>
+//         + Pow<u64, Output = T>
+//         + Into<GenericFraction<T>>
+//         + fraction::Integer,
+// {
+//     if src.eq_ignore_ascii_case("inf") {
+//         return Ok(GenericFraction::infinity());
+//     } else if src.eq_ignore_ascii_case("-inf") {
+//         return Ok(GenericFraction::neg_infinity());
+//     } else if src.eq_ignore_ascii_case("nan") {
+//         return Ok(GenericFraction::nan());
+//     }
+//     match src.find('/') {
+//         Some(idx) => {
+//             let num_src = &src[..idx];
+//             let den_src = &src[idx + 1..];
+//             let mut sign = Sign::Plus;
+
+//             let num_src = match num_src.chars().next() {
+//                 Some('+') => &num_src[1..],
+//                 Some('-') => {
+//                     sign = -sign;
+//                     &num_src[1..]
+//                 }
+//                 _ => &num_src[..],
+//             };
+//             let den_src = match den_src.chars().next() {
+//                 Some('+') => &den_src[1..],
+//                 Some('-') => {
+//                     sign = -sign;
+//                     &den_src[1..]
+//                 }
+//                 _ => &den_src[..],
+//             };
+
+//             let num = if num_src.is_empty() {
+//                 T::_1()
+//             } else {
+//                 T::from_str(num_src)?
+//             };
+//             let den = if den_src.is_empty() {
+//                 T::_1()
+//             } else {
+//                 T::from_str(den_src)?
+//             };
+
+//             if den.is_zero() {
+//                 if num.is_zero() {
+//                     Ok(GenericFraction::NaN)
+//                 } else {
+//                     Ok(GenericFraction::Infinity(sign))
+//                 }
+//             } else {
+//                 Ok(GenericFraction::Rational(sign, Ratio::new(num, den)))
+//             }
+//         }
+//         None => {
+//             let FractionFromDecimalResult { sign, int_part, repeating_part, exp } = split_decimal_notation(src)?;
+//             let sign = if sign { Sign::Plus } else { Sign::Minus };
+//             fraction_from_decimal(sign, &int_part, &repeating_part, exp)
+//         }
+//     }
+// }
+
+enum ParseFractionResult<T> {
+    Rational(bool, T, T),
+    Infinity(bool),
+    Zero(bool),
+    NaN,
 }
 
-fn fraction_from_decimal<T>(
-    sign: Sign,
-    int_part: &str,
-    repeating_part: &str,
+struct FractionFromDecimalResult {
+    sign: bool,
+    int_part: String,
+    repeating_part: String,
     exp: isize,
-) -> Result<GenericFraction<T>, anyhow::Error>
+}
+
+fn fraction_from_decimal_1<T, E>(
+    from_decimal_result: FractionFromDecimalResult,
+) -> Result<ParseFractionResult<T>, anyhow::Error>
 where
-    T: GenericInteger
-        + Clone
-        + Copy
-        + FromStr<Err = ParseIntError>
-        + Pow<usize, Output = T>
-        + Into<GenericFraction<T>>,
+    T: Clone
+        + FromStr<Err = E>
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + for<'a> MulAssign<&'a T>
+        + AddAssign
+        + PartialEq
+        + Pow<u64, Output = T>
+        + Zero
+        + One
+        + Ten,
 {
+    let FractionFromDecimalResult {
+        sign,
+        int_part,
+        repeating_part,
+        exp,
+    } = from_decimal_result;
+    let int_part = &int_part[..];
+    let repeating_part = &repeating_part[..];
     if !int_part.chars().all(|c| c.is_digit(10)) {
         bail!("Invalid integer part")
     }
     if !repeating_part.chars().all(|c| c.is_digit(10)) {
         bail!("Invalid repeating part")
     }
-    let repeating_part_len = repeating_part.len();
-    let int_part: T = empty_safe_parse(int_part)?;
-    let mut result: GenericFraction<T> = int_part.into();
-    if repeating_part_len > 0 {
-        let repeat_den: T = T::_10().pow(repeating_part_len) - T::_1();
-        let repeat_num: T = empty_safe_parse(repeating_part)?;
-        result += if let Some(fr) = GenericFraction::new_generic(Sign::Plus, repeat_num, repeat_den)
-        {
-            fr
+    let repeating_part_len = repeating_part.len() as u64;
+
+    let mut num: T = if int_part.is_empty() {
+        T::ZERO
+    } else {
+        T::from_str(int_part).map_err(|_| anyhow!("parsing failed"))?
+    };
+    let mut den: T = if repeating_part_len > 0 {
+        let repeat_den: T = T::TEN.pow(repeating_part_len) - T::ONE;
+        let repeat_num: T = if repeating_part.is_empty() {
+            T::ZERO
         } else {
-            bail!("Invalid fraction format")
+            T::from_str(repeating_part).map_err(|_| anyhow!("parsing failed"))?
         };
+        num *= &repeat_den;
+        num += repeat_num;
+        repeat_den
+    } else {
+        T::ONE
+    };
+
+    if num == T::ZERO {
+        return Ok(ParseFractionResult::Zero(sign));
     }
+
     if exp > 0 {
-        result *= T::_10().pow(exp as usize);
+        num *= &T::TEN.pow(exp as u64);
     } else if exp < 0 {
-        result /= T::_10().pow((-exp) as usize);
+        den *= &T::TEN.pow((-exp) as u64);
     }
-    match sign {
-        Sign::Plus => Ok(result),
-        Sign::Minus => Ok(-result),
-    }
+
+    Ok(ParseFractionResult::Rational(sign, num, den))
 }
 
-pub fn parse_fraction<T>(src: &str) -> Result<GenericFraction<T>, anyhow::Error>
+fn parse_fraction_1<T, E>(src: &str) -> Result<ParseFractionResult<T>, anyhow::Error>
 where
-    T: GenericInteger
-        + Clone
-        + Copy
-        + FromStr<Err = ParseIntError>
-        + Pow<usize, Output = T>
-        + Into<GenericFraction<T>>
-        + fraction::Integer,
+    T: Clone
+        + FromStr<Err = E>
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + for<'a> MulAssign<&'a T>
+        + AddAssign
+        + PartialEq
+        + Pow<u64, Output = T>
+        + Zero
+        + One
+        + Ten,
 {
     if src.eq_ignore_ascii_case("inf") {
-        return Ok(GenericFraction::infinity());
+        return Ok(ParseFractionResult::Infinity(true));
     } else if src.eq_ignore_ascii_case("-inf") {
-        return Ok(GenericFraction::neg_infinity());
+        return Ok(ParseFractionResult::Infinity(false));
     } else if src.eq_ignore_ascii_case("nan") {
-        return Ok(GenericFraction::nan());
+        return Ok(ParseFractionResult::NaN);
     }
     match src.find('/') {
         Some(idx) => {
             let num_src = &src[..idx];
             let den_src = &src[idx + 1..];
-            let mut sign = Sign::Plus;
+            let mut sign = true;
 
             let num_src = match num_src.chars().next() {
                 Some('+') => &num_src[1..],
                 Some('-') => {
-                    sign = -sign;
+                    sign = !sign;
                     &num_src[1..]
                 }
                 _ => &num_src[..],
@@ -324,36 +585,1095 @@ where
             let den_src = match den_src.chars().next() {
                 Some('+') => &den_src[1..],
                 Some('-') => {
-                    sign = -sign;
+                    sign = !sign;
                     &den_src[1..]
                 }
                 _ => &den_src[..],
             };
 
             let num = if num_src.is_empty() {
-                T::_1()
+                T::ONE
             } else {
-                T::from_str(num_src)?
+                T::from_str(num_src).map_err(|_| anyhow!("parsing failed"))?
             };
             let den = if den_src.is_empty() {
-                T::_1()
+                T::ONE
             } else {
-                T::from_str(den_src)?
+                T::from_str(den_src).map_err(|_| anyhow!("parsing failed"))?
             };
 
-            if den.is_zero() {
-                if num.is_zero() {
-                    Ok(GenericFraction::NaN)
+            if den == T::ZERO {
+                if num == T::ZERO {
+                    Ok(ParseFractionResult::NaN)
                 } else {
-                    Ok(GenericFraction::Infinity(sign))
+                    Ok(ParseFractionResult::Infinity(sign))
                 }
+            } else if num == T::ZERO {
+                Ok(ParseFractionResult::Zero(sign))
             } else {
-                Ok(GenericFraction::Rational(sign, Ratio::new(num, den)))
+                Ok(ParseFractionResult::Rational(sign, num, den))
             }
         }
-        None => {
-            let (sign, int_part, repeating_part, exp) = split_decimal_notation(src)?;
-            fraction_from_decimal(sign, &int_part, &repeating_part, exp)
+        None => Ok(fraction_from_decimal_1(split_decimal_notation(src)?)?),
+    }
+}
+
+impl<T> From<ParseFractionResult<T>> for Frac<T>
+where
+    T: Clone + fraction::Integer + Zero + One,
+{
+    fn from(value: ParseFractionResult<T>) -> Self {
+        use ParseFractionResult::*;
+        match value {
+            Rational(s, num, den) => GenericFraction::Rational(
+                if s { Sign::Plus } else { Sign::Minus },
+                Ratio::new(num, den),
+            ),
+            Infinity(s) => {
+                GenericFraction::Infinity(if s { Sign::Plus } else { Sign::Minus }).into()
+            }
+            Zero(s) => GenericFraction::Rational(
+                if s { Sign::Plus } else { Sign::Minus },
+                Ratio::new_raw(T::ZERO, T::ONE),
+            ),
+            NaN => GenericFraction::NaN,
+        }
+        .into()
+    }
+}
+
+impl<T> FromStr for Frac<T>
+where
+    T: GenericInteger
+        + Clone
+        + Copy
+        + FromStr<Err = ParseIntError>
+        + Pow<u64, Output = T>
+        + Into<GenericFraction<T>>
+        + fraction::Integer
+        + Zero
+        + One
+        + Ten,
+{
+    type Err = anyhow::Error;
+
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        Ok(parse_fraction_1(src)?.into())
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Hash)]
+pub enum MpqExt {
+    Zero(bool),
+    Inf(bool),
+    NaN,
+    Rational(Mpq),
+}
+
+impl MpqExt {
+    #[inline]
+    pub fn into_numerator(self) -> Mpn {
+        use MpqExt::*;
+        match self {
+            Zero(_) | NaN => Mpn::ZERO,
+            Inf(_) => Mpn::ONE,
+            Rational(q) => q.into_numerator(),
+        }
+    }
+
+    #[inline]
+    pub fn into_numerator_signed(self) -> Mpz {
+        use MpqExt::*;
+        match self {
+            Zero(_) | NaN => Mpz::ZERO,
+            Inf(true) => Mpz::ONE,
+            Inf(false) => Mpz::NEGATIVE_ONE,
+            Rational(q) => Mpz::from_sign_and_abs(q >= 0, q.into_numerator()),
+        }
+    }
+
+    #[inline]
+    pub fn into_denominator(self) -> Mpn {
+        use MpqExt::*;
+        match self {
+            Zero(_) | NaN => Mpn::ONE,
+            Inf(_) => Mpn::ZERO,
+            Rational(q) => q.into_denominator(),
+        }
+    }
+
+    #[inline]
+    pub fn into_denominator_signed(self) -> Mpz {
+        use MpqExt::*;
+        match self {
+            NaN | Zero(true) => Mpz::ONE,
+            Zero(false) => Mpz::NEGATIVE_ONE,
+            Inf(_) => Mpz::ZERO,
+            Rational(q) => Mpz::from_sign_and_abs(q >= 0, q.into_numerator()),
+        }
+    }
+
+    #[inline]
+    pub fn into_numerator_and_denominator(self) -> (Mpn, Mpn) {
+        use MpqExt::*;
+        match self {
+            Zero(_) => (Mpn::ZERO, Mpn::ONE),
+            NaN => (Mpn::ZERO, Mpn::ZERO),
+            Inf(_) => (Mpn::ONE, Mpn::ZERO),
+            Rational(q) => q.into_numerator_and_denominator(),
+        }
+    }
+
+    #[inline]
+    pub fn to_numerator(&self) -> Mpn {
+        use MpqExt::*;
+        match self {
+            Zero(_) | NaN => Mpn::ZERO,
+            Inf(_) => Mpn::ONE,
+            Rational(q) => q.to_numerator(),
+        }
+    }
+
+    #[inline]
+    pub fn to_denominator(&self) -> Mpn {
+        use MpqExt::*;
+        match self {
+            Zero(_) | NaN => Mpn::ONE,
+            Inf(_) => Mpn::ZERO,
+            Rational(q) => q.to_denominator(),
+        }
+    }
+
+    // `numerator_ref` and `denominator_ref` are not possible
+
+    #[inline]
+    pub fn to_numerator_and_denominator(&self) -> (Mpn, Mpn) {
+        use MpqExt::*;
+        match self {
+            Zero(_) => (Mpn::ZERO, Mpn::ONE),
+            NaN => (Mpn::ZERO, Mpn::ZERO),
+            Inf(_) => (Mpn::ONE, Mpn::ZERO),
+            Rational(q) => q.to_numerator_and_denominator(),
+        }
+    }
+
+    #[inline]
+    pub fn is_nan(&self) -> bool {
+        use MpqExt::*;
+        match self {
+            NaN => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_zero(&self) -> bool {
+        match self {
+            Self::Zero(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn sign(&self) -> Ordering {
+        use MpqExt::*;
+        use Ordering::*;
+        match self {
+            Zero(_) | NaN => Equal,
+            &Inf(s) => {
+                if s {
+                    Greater
+                } else {
+                    Less
+                }
+            }
+            Rational(q) => q.sign(),
+        }
+    }
+
+    pub fn sign_strict(&self) -> Ordering {
+        use MpqExt::*;
+        use Ordering::*;
+        match self {
+            NaN => Equal,
+            &Zero(s) | &Inf(s) => {
+                if s {
+                    Greater
+                } else {
+                    Less
+                }
+            }
+            Rational(q) => q.sign(),
+        }
+    }
+
+    pub fn from_sign_and_naturals(sign: bool, n: Mpn, d: Mpn) -> Self {
+        match (n, d) {
+            (Mpn::ZERO, Mpn::ZERO) => Self::NaN,
+            (Mpn::ZERO, _) => Self::Zero(sign),
+            (_, Mpn::ZERO) => Self::Inf(sign),
+            (n, d) => Self::Rational(Mpq::from_sign_and_naturals(sign, n, d)),
+        }
+    }
+
+    pub fn from_sign_and_naturals_ref(sign: bool, n: &Mpn, d: &Mpn) -> Self {
+        match (n, d) {
+            (&Mpn::ZERO, &Mpn::ZERO) => Self::NaN,
+            (&Mpn::ZERO, _) => Self::Zero(sign),
+            (_, &Mpn::ZERO) => Self::Inf(sign),
+            (n, d) => Self::Rational(Mpq::from_sign_and_naturals_ref(sign, n, d)),
+        }
+    }
+
+    pub fn from_integers(n: Mpz, d: Mpz) -> Self {
+        match (n, d) {
+            (Mpz::ZERO, Mpz::ZERO) => Self::NaN,
+            (Mpz::ZERO, d) => Self::Zero(d >= 0),
+            (n, Mpz::ZERO) => Self::Inf(n >= 0),
+            (n, d) => Self::Rational(Mpq::from_integers(n, d)),
+        }
+    }
+
+    pub fn from_integers_ref(n: &Mpz, d: &Mpz) -> Self {
+        match (n, d) {
+            (&Mpz::ZERO, &Mpz::ZERO) => Self::NaN,
+            (&Mpz::ZERO, d) => Self::Zero(d >= &0),
+            (n, &Mpz::ZERO) => Self::Inf(n >= &0),
+            (n, d) => Self::Rational(Mpq::from_integers_ref(n, d)),
+        }
+    }
+}
+
+impl FromStr for MpqExt {
+    type Err = anyhow::Error;
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let parse_result: ParseFractionResult<Mpn> = parse_fraction_1(src)?;
+        Ok(match parse_result {
+            ParseFractionResult::NaN => Self::NaN,
+            ParseFractionResult::Zero(s) => Self::Zero(s),
+            ParseFractionResult::Infinity(s) => Self::Inf(s),
+            ParseFractionResult::Rational(s, n, d) => {
+                Self::Rational(Mpq::from_sign_and_naturals(s, n, d))
+            }
+        })
+    }
+}
+
+impl From<Mpz> for MpqExt {
+    fn from(value: Mpz) -> Self {
+        match value {
+            Mpz::ZERO => Self::Zero(true),
+            _ => Self::Rational(Mpq::from(value)),
+        }
+    }
+}
+
+impl From<Mpn> for MpqExt {
+    fn from(value: Mpn) -> Self {
+        match value {
+            Mpn::ZERO => Self::Zero(true),
+            _ => Self::Rational(Mpq::from(value)),
+        }
+    }
+}
+
+macro_rules! impl_mpq_ext_from_int {
+    ($($t:ty),+$(,)?) => {
+        $(impl From<$t> for MpqExt {
+            fn from(value: $t) -> Self {
+                match value {
+                    0 => Self::Zero(true),
+                    _ => Self::Rational(Mpq::from(value)),
+                }
+            }
+        })*
+    };
+}
+
+macro_rules! impl_mpq_ext_try_from_float {
+    ($($t:ty),+$(,)?) => {
+        $(impl TryFrom<$t> for MpqExt {
+            type Error = anyhow::Error;
+            fn try_from(value: $t) -> Result<Self, Self::Error> {
+                use MpqExt::*;
+                if value.is_nan() {
+                    Ok(NaN)
+                } else if value.is_zero() {
+                    Ok(Zero(value.is_sign_positive()))
+                } else if value.is_infinite() {
+                    Ok(Inf(value.is_sign_positive()))
+                } else {
+                    Ok(Rational(Mpq::try_from(value).map_err(|_| anyhow!("parse failed"))?))
+                }
+            }
+        })*
+    }
+}
+
+impl_mpq_ext_from_int!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+);
+impl_mpq_ext_try_from_float!(/*f16,*/ f32, f64 /*f128*/,);
+
+impl From<Mpq> for MpqExt {
+    fn from(value: Mpq) -> Self {
+        match value {
+            Mpq::ZERO => Self::Zero(true),
+            _ => Self::Rational(value),
+        }
+    }
+}
+
+impl From<&Mpq> for MpqExt {
+    fn from(value: &Mpq) -> Self {
+        match value {
+            &Mpq::ZERO => Self::Zero(true),
+            _ => Self::Rational(value.clone()),
+        }
+    }
+}
+
+impl TryInto<Mpq> for MpqExt {
+    type Error = anyhow::Error;
+
+    fn try_into(self) -> Result<Mpq, Self::Error> {
+        match self {
+            MpqExt::Zero(_) => Ok(Mpq::ZERO),
+            MpqExt::Rational(q) => Ok(q),
+            _ => Err(anyhow!("infinity or NaN cannot be converted")),
+        }
+    }
+}
+
+impl One for MpqExt {
+    const ONE: Self = Self::Rational(Mpq::ONE);
+}
+
+impl Zero for MpqExt {
+    const ZERO: Self = Self::Zero(true);
+}
+
+impl NegativeZero for MpqExt {
+    const NEGATIVE_ZERO: Self = Self::Zero(false);
+}
+
+impl NegativeOne for MpqExt {
+    const NEGATIVE_ONE: Self = Self::Rational(Mpq::NEGATIVE_ONE);
+}
+
+impl Two for MpqExt {
+    const TWO: Self = Self::Rational(Mpq::TWO);
+}
+
+impl OneHalf for MpqExt {
+    const ONE_HALF: Self = Self::Rational(Mpq::ONE_HALF);
+}
+
+impl Infinity for MpqExt {
+    const INFINITY: Self = Self::Inf(true);
+}
+
+impl NegativeInfinity for MpqExt {
+    const NEGATIVE_INFINITY: Self = Self::Inf(false);
+}
+
+impl NaN for MpqExt {
+    const NAN: Self = Self::NaN;
+}
+
+impl Default for MpqExt {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
+macro_rules! impl_neg_for_mpq_ext {
+    ($($t:ty),+$(,)?) => {
+        $(impl Neg for $t {
+            type Output = MpqExt;
+
+            fn neg(self) -> Self::Output {
+                use MpqExt::*;
+                match self {
+                    Rational(q) => Rational(-q),
+                    Inf(s) => Inf(!s),
+                    Zero(s) => Zero(!s),
+                    NaN => NaN,
+                }
+            }
+        })*
+    };
+}
+impl_neg_for_mpq_ext!(MpqExt, &MpqExt);
+
+impl NegAssign for MpqExt {
+    fn neg_assign(&mut self) {
+        use MpqExt::*;
+        match self {
+            Zero(s) | Inf(s) => *s = !*s,
+            NaN => {}
+            Rational(q) => q.neg_assign(),
+        }
+    }
+}
+
+impl Reciprocal for MpqExt {
+    type Output = Self;
+
+    fn reciprocal(self) -> Self::Output {
+        use MpqExt::*;
+        match self {
+            Rational(q) => Rational(q.reciprocal()),
+            Inf(s) => Zero(s),
+            Zero(s) => Inf(s),
+            NaN => NaN,
+        }
+    }
+}
+
+impl Reciprocal for &MpqExt {
+    type Output = MpqExt;
+
+    fn reciprocal(self) -> Self::Output {
+        use MpqExt::*;
+        match self {
+            Rational(q) => Rational(q.reciprocal()),
+            Inf(s) => Zero(*s),
+            Zero(s) => Inf(*s),
+            NaN => NaN,
+        }
+    }
+}
+
+impl ReciprocalAssign for MpqExt {
+    fn reciprocal_assign(&mut self) {
+        use MpqExt::*;
+        match self {
+            Rational(q) => q.reciprocal_assign(),
+            Inf(s) => *self = Zero(*s),
+            Zero(s) => *self = Inf(*s),
+            NaN => {}
+        }
+    }
+}
+
+impl Add for MpqExt {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (_, NaN) | (NaN, _) => NaN,
+            (Inf(s1), Inf(s2)) if s1 != s2 => NaN,
+            (Zero(s1), Zero(s2)) => Zero(s1 || s2),
+            (Zero(_), r) | (r, Zero(_)) => r,
+            (Inf(s), _) | (_, Inf(s)) => Inf(s),
+            (Rational(q1), Rational(q2)) => (q1 + q2).into(),
+        }
+    }
+}
+
+impl Add<&Self> for MpqExt {
+    type Output = Self;
+
+    fn add(self, rhs: &Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (_, NaN) | (NaN, _) => NaN,
+            (Inf(s1), &Inf(s2)) if s1 != s2 => NaN,
+            (Zero(s1), &Zero(s2)) => Zero(s1 || s2),
+            (Zero(_), r) => r.clone(),
+            (r, Zero(_)) => r,
+            (Inf(s), _) | (_, &Inf(s)) => Inf(s),
+            (Rational(q1), Rational(q2)) => (q1 + q2).into(),
+        }
+    }
+}
+
+impl Add<MpqExt> for &MpqExt {
+    type Output = MpqExt;
+
+    fn add(self, rhs: MpqExt) -> Self::Output {
+        rhs + self
+    }
+}
+
+impl Add for &MpqExt {
+    type Output = MpqExt;
+    fn add(self, rhs: Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (_, NaN) | (NaN, _) => NaN,
+            (Inf(s1), Inf(s2)) if s1 != s2 => NaN,
+            (&Zero(s1), &Zero(s2)) => Zero(s1 || s2),
+            (Zero(_), r) | (r, Zero(_)) => r.clone(),
+            (&Inf(s), _) | (_, &Inf(s)) => Inf(s),
+            (Rational(q1), Rational(q2)) => (q1 + q2).into(),
+        }
+    }
+}
+
+impl AddAssign for MpqExt {
+    fn add_assign(&mut self, rhs: Self) {
+        use MpqExt::*;
+        *self = match (std::mem::replace(self, NaN), rhs) {
+            (NaN, _) | (_, NaN) => NaN,
+            (Inf(s1), Inf(s2)) if s1 != s2 => NaN,
+            (Inf(s), _) | (_, Inf(s)) => Inf(s),
+            (Zero(s1), Zero(s2)) => Zero(s1 || s2),
+            (Zero(_), r) | (r, Zero(_)) => r,
+            (Rational(mut q1), Rational(q2)) => {
+                q1 += q2;
+                if q1 == 0 { Zero(true) } else { Rational(q1) }
+            }
+        }
+        // match (self, rhs) {
+        //     (NaN, _)
+        //     | (Zero(_), Zero(false))
+        //     | (Rational(_), Zero(_))
+        //     | (Inf(_), Zero(_) | Rational(_))
+        //     | (Inf(true), Inf(true))
+        //     | (Inf(false), Inf(false)) => {}
+        //     (a, NaN)
+        //     | (a @ Inf(true), Inf(false))
+        //     | (a @ Inf(false), Inf(true)) => *a = MpqExt::NaN,
+        //     (Zero(s), Zero(true)) => *s = true,
+        //     (a @ Zero(_), other @ (Rational(_) | Inf(_)))
+        //     | (a @ Rational(_), other @ Inf(_)) => *a = other,
+        //     (a @ Rational(_), Rational(q2)) => {
+        //         if let Rational(q1) = a {
+        //             *q1 += q2;
+        //             if q1 == &0 {
+        //                 *a = MpqExt::ZERO;
+        //             }
+        //         } else {
+        //             unreachable!();
+        //         }
+        //     },
+        // }
+    }
+}
+
+impl AddAssign<&Self> for MpqExt {
+    fn add_assign(&mut self, rhs: &Self) {
+        use MpqExt::*;
+        *self = match (std::mem::replace(self, NaN), rhs) {
+            (NaN, _) | (_, NaN) => NaN,
+            (Inf(s1), &Inf(s2)) if s1 != s2 => NaN,
+            (Inf(s), _) | (_, &Inf(s)) => Inf(s),
+            (Zero(s1), &Zero(s2)) => Zero(s1 || s2),
+            (Zero(_), r) => r.clone(),
+            (r, Zero(_)) => r,
+            (Rational(mut q1), Rational(q2)) => {
+                q1 += q2;
+                if q1 == 0 { Zero(true) } else { Rational(q1) }
+            }
+        }
+        // match (self, rhs) {
+        //     (NaN, _)
+        //     | (Zero(_), Zero(false))
+        //     | (Rational(_), Zero(_))
+        //     | (Inf(_), Zero(_) | Rational(_))
+        //     | (Inf(true), Inf(true))
+        //     | (Inf(false), Inf(false)) => {}
+        //     (a, NaN)
+        //     | (a @ Inf(true), Self::Inf(false))
+        //     | (a @ Inf(false), Self::Inf(true)) => *a = MpqExt::NaN,
+        //     (Zero(s), Zero(true)) => *s = true,
+        //     (a @ Zero(_), other @ (Rational(_) | Inf(_)))
+        //     | (a @ Self::Rational(_), other @ Inf(_)) => *a = other.clone(),
+        //     (a @ Rational(_), Rational(q2)) => {
+        //         if let Rational(q1) = a {
+        //             *q1 += q2;
+        //             if q1 == &0 {
+        //                 *a = MpqExt::ZERO;
+        //             }
+        //         } else {
+        //             unreachable!();
+        //         }
+        //     },
+        // }
+    }
+}
+
+impl Sum for MpqExt {
+    fn sum<I>(xs: I) -> MpqExt
+    where
+        I: Iterator<Item = MpqExt>,
+    {
+        let mut stack = Vec::new();
+        for (i, x) in xs.enumerate() {
+            if x.is_nan() {
+                return MpqExt::NaN;
+            }
+            let mut s = x;
+            for _ in 0..(i + 1).trailing_zeros() {
+                s += stack.pop().unwrap();
+            }
+            stack.push(s);
+        }
+        let mut s = MpqExt::ZERO;
+        for x in stack.into_iter().rev() {
+            s += x;
+        }
+        s
+    }
+}
+
+impl<'a> Sum<&'a MpqExt> for MpqExt {
+    fn sum<I>(xs: I) -> MpqExt
+    where
+        I: Iterator<Item = &'a MpqExt>,
+    {
+        let mut stack = Vec::new();
+        for (i, x) in xs.enumerate() {
+            if x.is_nan() {
+                return MpqExt::NaN;
+            }
+            let mut s = x.clone();
+            for _ in 0..(i + 1).trailing_zeros() {
+                s += stack.pop().unwrap();
+            }
+            stack.push(s);
+        }
+        let mut s = MpqExt::ZERO;
+        for x in stack.into_iter().rev() {
+            s += x;
+        }
+        s
+    }
+}
+
+impl Mul for MpqExt {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (NaN, _) | (_, NaN) | (Zero(_), Inf(_)) | (Inf(_), Zero(_)) => NaN,
+            (Zero(s1), Zero(s2)) => Zero(s1 == s2),
+            (Zero(s1), Rational(q)) | (Rational(q), Zero(s1)) => {
+                let s2 = q >= 0;
+                Zero(s1 == s2)
+            }
+            (Inf(s1), Inf(s2)) => Inf(s1 == s2),
+            (Inf(s1), Rational(q)) | (Rational(q), Inf(s1)) => {
+                let s2 = q >= 0;
+                Inf(s1 == s2)
+            }
+            (Rational(q1), Rational(q2)) => Rational(q1 * q2),
+        }
+    }
+}
+
+impl Mul<&Self> for MpqExt {
+    type Output = Self;
+    fn mul(self, rhs: &Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (NaN, _) | (_, NaN) | (Zero(_), Inf(_)) | (Inf(_), Zero(_)) => NaN,
+            (Zero(s1), &Zero(s2)) => Zero(s1 == s2),
+            (Zero(s1), Rational(q)) => {
+                let s2 = q >= &0;
+                Zero(s1 == s2)
+            }
+            (Rational(q), &Zero(s1)) => {
+                let s2 = q >= 0;
+                Zero(s1 == s2)
+            }
+            (Inf(s1), &Inf(s2)) => Inf(s1 == s2),
+            (Inf(s1), Rational(q)) => {
+                let s2 = q >= &0;
+                Inf(s1 == s2)
+            }
+            (Rational(q), &Inf(s1)) => {
+                let s2 = q >= 0;
+                Inf(s1 == s2)
+            }
+            (Rational(q1), Rational(q2)) => Rational(q1 * q2),
+        }
+    }
+}
+
+impl Mul<MpqExt> for &MpqExt {
+    type Output = MpqExt;
+
+    fn mul(self, rhs: MpqExt) -> Self::Output {
+        rhs * self
+    }
+}
+
+impl Mul<Self> for &MpqExt {
+    type Output = MpqExt;
+    fn mul(self, rhs: Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (NaN, _) | (_, NaN) | (Zero(_), Inf(_)) | (Inf(_), Zero(_)) => NaN,
+            (Zero(s1), Zero(s2)) => Zero(s1 == s2),
+            (&Zero(s1), Rational(q)) | (Rational(q), &Zero(s1)) => {
+                let s2 = q >= &0;
+                Zero(s1 == s2)
+            }
+            (Inf(s1), Inf(s2)) => Inf(s1 == s2),
+            (&Inf(s1), Rational(q)) | (Rational(q), &Inf(s1)) => {
+                let s2 = q >= &0;
+                Inf(s1 == s2)
+            }
+            (Rational(q1), Rational(q2)) => Rational(q1 * q2),
+        }
+    }
+}
+
+impl MulAssign for MpqExt {
+    fn mul_assign(&mut self, rhs: Self) {
+        use MpqExt::*;
+        match rhs {
+            MpqExt::ONE => {}
+            _ => {
+                let temp = std::mem::replace(self, NaN);
+                *self = temp * rhs;
+            }
+        }
+    }
+}
+
+impl MulAssign<&MpqExt> for MpqExt {
+    fn mul_assign(&mut self, rhs: &Self) {
+        use MpqExt::*;
+        match rhs {
+            &MpqExt::ONE => {}
+            _ => {
+                let temp = std::mem::replace(self, NaN);
+                *self = temp * rhs;
+            }
+        }
+    }
+}
+
+impl Product for MpqExt {
+    fn product<I>(xs: I) -> MpqExt
+    where
+        I: Iterator<Item = MpqExt>,
+    {
+        use MpqExt::*;
+        let mut stack = Vec::new();
+        for (i, x) in xs.enumerate() {
+            if x.is_nan() {
+                return NaN;
+            }
+            let mut s = x;
+            for _ in 0..(i + 1).trailing_zeros() {
+                s *= stack.pop().unwrap();
+            }
+            stack.push(s);
+        }
+        let mut s = MpqExt::ONE;
+        for x in stack.into_iter().rev() {
+            s *= x;
+        }
+        s
+    }
+}
+
+impl<'a> Product<&'a MpqExt> for MpqExt {
+    fn product<I>(xs: I) -> MpqExt
+    where
+        I: Iterator<Item = &'a MpqExt>,
+    {
+        use MpqExt::*;
+        let mut stack = Vec::new();
+        for (i, x) in xs.enumerate() {
+            if x.is_nan() {
+                return NaN;
+            }
+            let mut s = x.clone();
+            for _ in 0..(i + 1).trailing_zeros() {
+                s *= stack.pop().unwrap();
+            }
+            stack.push(s);
+        }
+        let mut s = MpqExt::ONE;
+        for x in stack.into_iter().rev() {
+            s *= x;
+        }
+        s
+    }
+}
+
+impl Sub for MpqExt {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (_, NaN) | (NaN, _) => NaN,
+            (Inf(s1), Inf(s2)) if s1 == s2 => NaN,
+            (Zero(s1), Zero(s2)) => Zero(s1 || !s2),
+            (other, Zero(_)) => other,
+            (Zero(_), other) => -other,
+            (Inf(true), _) | (_, Inf(false)) => Self::INFINITY,
+            (Inf(false), _) | (_, Inf(true)) => Self::NEGATIVE_INFINITY,
+            (Rational(q1), Rational(q2)) => Rational(q1 - q2),
+        }
+    }
+}
+
+impl Sub<&Self> for MpqExt {
+    type Output = Self;
+
+    fn sub(self, rhs: &Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (_, NaN) | (NaN, _) => NaN,
+            (Inf(s1), &Inf(s2)) if s1 == s2 => NaN,
+            (Zero(s1), &Zero(s2)) => Zero(s1 || !s2),
+            (other, Zero(_)) => other,
+            (Zero(_), other) => -other,
+            (Inf(true), _) | (_, Inf(false)) => Self::INFINITY,
+            (Inf(false), _) | (_, Inf(true)) => Self::NEGATIVE_INFINITY,
+            (Rational(q1), Rational(q2)) => Rational(q1 - q2),
+        }
+    }
+}
+
+impl Sub<MpqExt> for &MpqExt {
+    type Output = MpqExt;
+
+    fn sub(self, rhs: MpqExt) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (_, NaN) | (NaN, _) => NaN,
+            (&Inf(s1), Inf(s2)) if s1 == s2 => NaN,
+            (&Zero(s1), Zero(s2)) => Zero(s1 || !s2),
+            (other, Zero(_)) => other.clone(),
+            (Zero(_), other) => -other,
+            (Inf(true), _) | (_, Inf(false)) => MpqExt::INFINITY,
+            (Inf(false), _) | (_, Inf(true)) => MpqExt::NEGATIVE_INFINITY,
+            (Rational(q1), Rational(q2)) => Rational(q1 - q2),
+        }
+    }
+}
+
+impl Sub<Self> for &MpqExt {
+    type Output = MpqExt;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        use MpqExt::*;
+        match (self, rhs) {
+            (_, NaN) | (NaN, _) => NaN,
+            (&Inf(s1), &Inf(s2)) if s1 == s2 => NaN,
+            (&Zero(s1), &Zero(s2)) => Zero(s1 || !s2),
+            (other, Zero(_)) => other.clone(),
+            (Zero(_), other) => -other,
+            (Inf(true), _) | (_, Inf(false)) => MpqExt::INFINITY,
+            (Inf(false), _) | (_, Inf(true)) => MpqExt::NEGATIVE_INFINITY,
+            (Rational(q1), Rational(q2)) => Rational(q1 - q2),
+        }
+    }
+}
+
+impl Div for MpqExt {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::NaN, _)
+            | (_, Self::NaN)
+            | (Self::Zero(_), Self::Zero(_))
+            | (Self::Inf(_), Self::Inf(_)) => Self::NaN,
+            (Self::Zero(s1), Self::Inf(s2)) => Self::Zero(s1 == s2),
+            (Self::Inf(s1), Self::Zero(s2)) => Self::Inf(s1 == s2),
+            (Self::Inf(s1), Self::Rational(q)) | (Self::Rational(q), Self::Zero(s1)) => {
+                let s2 = q >= 0;
+                Self::Inf(s1 == s2)
+            }
+            (Self::Rational(q), Self::Inf(s1)) | (Self::Zero(s1), Self::Rational(q)) => {
+                let s2 = q >= 0;
+                Self::Zero(s1 == s2)
+            }
+            (Self::Rational(q1), Self::Rational(q2)) => Self::Rational(q1 / q2),
+        }
+    }
+}
+
+impl Sub<Mpq> for MpqExt {
+    type Output = Self;
+
+    fn sub(self, rhs: Mpq) -> Self::Output {
+        self - MpqExt::from(rhs)
+    }
+}
+
+macro_rules! impl_pow_for_mpq_ext {
+    ($($t:ty),+$(,)?) => {
+        $(impl Pow<u64> for $t {
+            type Output = MpqExt;
+
+            fn pow(self, exp: u64) -> Self::Output {
+                use MpqExt::*;
+                match self {
+                    NaN => NaN,
+                    Zero(true) => if exp > 0 {
+                        MpqExt::ZERO
+                    } else {
+                        MpqExt::ONE
+                    },
+                    Zero(false) => if exp > 0 {
+                        Zero(exp % 2 == 1)
+                    } else {
+                        MpqExt::ONE
+                    },
+                    Inf(true) => if exp > 0 {
+                        MpqExt::INFINITY
+                    } else {
+                        MpqExt::ONE
+                    },
+                    Inf(false) => if exp > 0 {
+                        Inf(exp % 2 == 1)
+                    } else {
+                        MpqExt::ONE
+                    },
+                    Rational(q) => {
+                        Rational(q.pow(exp))
+                    }
+                }
+            }
+        }
+
+        impl Pow<i64> for $t {
+            type Output = MpqExt;
+
+            fn pow(self, exp: i64) -> Self::Output {
+                use MpqExt::*;
+                match self {
+                    NaN => NaN,
+                    Zero(true) => if exp > 0 {
+                        MpqExt::ZERO
+                    } else if exp == 0 {
+                        MpqExt::ONE
+                    } else {
+                        MpqExt::INFINITY
+                    },
+                    Zero(false) => if exp > 0 {
+                        Zero(exp % 2 == 1)
+                    } else if exp == 0 {
+                        MpqExt::ONE
+                    } else {
+                        Inf(exp % 2 == 1)
+                    },
+                    Inf(true) => if exp > 0 {
+                        MpqExt::INFINITY
+                    } else if exp == 0 {
+                        MpqExt::ONE
+                    } else {
+                        MpqExt::ZERO
+                    },
+                    Inf(false) => if exp > 0 {
+                        Inf(exp % 2 == 1)
+                    } else if exp == 0 {
+                        MpqExt::ONE
+                    } else {
+                        MpqExt::ZERO
+                    },
+                    Rational(q) => {
+                        Rational(q.pow(exp))
+                    }
+                }
+            }
+        })*
+    };
+}
+
+impl_pow_for_mpq_ext!(MpqExt, &MpqExt);
+
+impl PowAssign<u64> for MpqExt {
+    fn pow_assign(&mut self, exp: u64) {
+        use MpqExt::*;
+        *self = std::mem::replace(self, NaN).pow(exp);
+    }
+}
+
+impl PowAssign<i64> for MpqExt {
+    fn pow_assign(&mut self, exp: i64) {
+        use MpqExt::*;
+        *self = std::mem::replace(self, NaN).pow(exp);
+    }
+}
+
+macro_rules! impl_abs_for_mpq_ext {
+    ($($t:ty),*$(,)?) => {
+        $(impl Abs for $t {
+            type Output = MpqExt;
+            fn abs(self) -> Self::Output {
+                use MpqExt::*;
+                match self {
+                    NaN => NaN,
+                    Zero(_) => Zero(true),
+                    Inf(_) => Inf(true),
+                    Rational(q) => Rational(q.abs()),
+                }
+            }
+        })*
+    };
+}
+
+impl_abs_for_mpq_ext!(MpqExt, &MpqExt);
+
+impl AbsAssign for MpqExt {
+    fn abs_assign(&mut self) {
+        match self {
+            MpqExt::NaN => {}
+            MpqExt::Zero(s) => *s = true,
+            MpqExt::Inf(s) => *s = true,
+            MpqExt::Rational(q) => (*q).abs_assign(),
+        }
+    }
+}
+
+impl Display for MpqExt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MpqExt::NaN => write!(f, "NaN"),
+            MpqExt::Zero(true) => write!(f, "0"),
+            MpqExt::Zero(false) => write!(f, "-0"),
+            MpqExt::Inf(true) => write!(f, "inf"),
+            MpqExt::Inf(false) => write!(f, "-inf"),
+            MpqExt::Rational(q) => Display::fmt(q, f),
+        }
+    }
+}
+
+impl Debug for MpqExt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <MpqExt as Display>::fmt(self, f)
+    }
+}
+
+impl PartialOrd for MpqExt {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        use MpqExt::*;
+        use Ordering::*;
+        match (self, other) {
+            (MpqExt::NaN, _) | (_, MpqExt::NaN) => None,
+            (_, Inf(true)) | (Inf(false), _) => Some(Less),
+            (Inf(true), _) | (_, Inf(false)) => Some(Greater),
+            (Zero(_), Zero(_)) => Some(Equal),
+            (Zero(_), Rational(q)) => Some(q.sign().reverse()),
+            (Rational(q), Zero(_)) => Some(q.sign()),
+            (Rational(q1), Rational(q2)) => q1.partial_cmp(q2),
+        }
+    }
+}
+
+impl MpqExt {
+    pub fn partial_cmp_strict(&self, other: &Self) -> Option<Ordering> {
+        use MpqExt::*;
+        use Ordering::*;
+        match (self, other) {
+            (MpqExt::NaN, _) | (_, MpqExt::NaN) => None,
+            (_, Inf(true)) | (Inf(false), _) => Some(Less),
+            (Inf(true), _) | (_, Inf(false)) => Some(Greater),
+            (Zero(s1), Zero(s2)) => s1.partial_cmp(s2),
+            (Zero(_), Rational(q)) => Some(q.sign().reverse()),
+            (Rational(q), Zero(_)) => Some(q.sign()),
+            (Rational(q1), Rational(q2)) => q1.partial_cmp(q2),
         }
     }
 }

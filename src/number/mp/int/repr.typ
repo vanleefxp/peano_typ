@@ -1,5 +1,4 @@
 // This is a program-generated file. Do not edit it directly.
-#import "../../_impl/number/rational/repr.typ": (
+#import "../../../_impl/number/mp/int/repr.typ": (
   to-str,
-  to-math,
 )

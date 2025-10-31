@@ -2,7 +2,6 @@
 #import "../../_impl/number/rational/init.typ": (
   from-bytes,
   to-bytes,
-  is-rational as is_,
-  rational as from,
+  is_,
+  from,
 )
-

@@ -7,7 +7,7 @@
 `{{name}}` currently supports two number types and their arithmetics:
 
 - `rational`: representation of [rational numbers](https://en.wikipedia.org/wiki/Rational_number) &#x211a; in the form of fractions
-- `complex`: representation of[ complex numbers](https://en.wikipedia.org/wiki/Complex_number) &#x2102;
+- `complex`: representation of  [complex numbers](https://en.wikipedia.org/wiki/Complex_number) &#x2102;
 
 It is a pity that Typst doesn't currently support custom types and overloading operators, so actually these numbers are represented by Typst's `dictionary` type, and you have to invoke specialized methods in the corresponding sub-module to perform arithmetic operations over these numbers.
 
@@ -43,7 +43,7 @@ Currently, `rational.from` supports fraction notation and decimal notation with 
 
 ```typ
 #import "@preview/{{name}}:{{version}}"
-#import {{name}}.number: rational as q
+#import {{name}}.number: q
 
 // fraction notation
 
@@ -74,7 +74,7 @@ A rational number can be displayed in both string and math format by using the `
 
 ```typ
 #import "@preview/{{name}}:{{version}}"
-#import {{name}}.number: rational as q
+#import {{name}}.number: q
 
 #let value = q.from(113, 355)
 
@@ -86,11 +86,47 @@ A rational number can be displayed in both string and math format by using the `
 
 ```typ
 #import "@preview/{{name}}:{{version}}"
-#import {{name}}.number: complex as c
+#import {{name}}.number: c
 
 #c.from("1+2i") // from string
 #c.from(3, 4) // from real and imaginary parts
 #c.add("1+2i", "3+4i", "-2+3i", "6-5i", "2i")
+```
+
+### Numbers with arbitrary precision
+
+Currently Typst uses 64-bit integers for the `int` type which has a boundary between `-9223372036854775808` and `9223372036854775807`, and even the [`decimal`](https://typst.app/docs/reference/foundations/decimal/) type supports only 28 to 29 significant decimal figures. However, sometimes you may want to do calculations that involves arbitrarily large integers at full precision. In this case you may use the multi-precision number types in `{{name}}.number.mp`.
+
+#### Multi-precision integers
+
+```typ
+#import "@preview/{{name}}:{{version}}"
+#import {{name}}.number.mp: mpz
+
+#decimal("11451419198101145141919810114") \
+// #decimal("114514191981011451419198101145") \ // Error: invalid decimal
+#mpz.to-str(mpz.from("114514191981011451419198101145")) \ // works!
+
+// $2^100 = #calc.pow(2, 100)$ \ // Error: the result is too large
+$2^100 approx #calc.pow(2.0, 100)$ \ // precision loss
+$2^100 = #mpz.to-str(mpz.pow(2, 100))$ \ // works!
+```
+
+#### Multi-precision rationals
+
+A multi-precision rational has numerator and denominator as multi-precision integers.
+
+```typ
+#import "@preview/{{name}}:{{version}}"
+#import {{name}}.number.mp: mpq
+
+#mpq.to-math(mpq.from(0.3))
+#mpq.to-math(mpq.from(0.1 + 0.2))
+#mpq.to-math(mpq.from("0.3"))
+#mpq.to-math(mpq.add("0.1", "0.2"))
+#mpq.to-math(mpq.from("0.[3]"))
+#mpq.to-math(mpq.from("0.[142857]"))
+#mpq.to-math(mpq.pow("3/2", 100))
 ```
 
 ## Number theory
@@ -113,12 +149,15 @@ The `{{name}}.func.special` sub-module include special functions such as the gam
 
 Initial release.
 
-### `0.1.1`
+### `0.2.0`
 
+- Added `{{name}}.number.mp.int` and `{{name}}.number.mp.rational` number type for representing integers / rationals with arbitrary precision.
+- provided directly importable aliases for all number types in `{{name}}.number`
 - Added `gcd`, `lcm` that accepts multiple inputs in `{{name}}.ntheory`.
 - Added prime related functions `prime-pi`, `nth-prime` in `{{name}}.ntheory`.
 - Added a few more special functions.
-- Added `from-bytes` and `to-bytes` for `{{name}}.number.complex` and `{{name}}.number.rational`
+- Added `from-bytes` and `to-bytes` for number types in `{{name}}.number`
+- Added `cmp` for `{{name}}.number.rational`
 - Fixed the problem that sign cannot be correctly handled when creating a `rational` by ratio.
 - Used `elembic`'s custom types to represent complex and rational numbers.
 - Refactored the implementation directory of `{{name}}.number`

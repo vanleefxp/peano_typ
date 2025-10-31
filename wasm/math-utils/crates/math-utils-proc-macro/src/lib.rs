@@ -30,12 +30,17 @@ pub fn define_func(input: TokenStream) -> TokenStream {
         let var_name = Ident::new(&format!("num{}", i), Span::call_site());
         quote! { #var_name }
     });
+    let calc_result_expr = if input.failable {
+        quote! { let result = (#closure)(#(#closure_args),*)?; }
+    } else {
+        quote! { let result = (#closure)(#(#closure_args),*); }
+    };
 
     let expanded = quote! {
         #[wasm_func]
         fn #func_name(#(#arg_declarations),*) -> Result<Vec<u8>, anyhow::Error> {
             #(#var_declarations)*
-            let result = (#closure)(#(#closure_args),*);
+            #calc_result_expr
             Ok(result.into_wasm_output())
         }
     };
@@ -67,6 +72,7 @@ fn get_arg_types(closure: &syn::ExprClosure) -> Vec<&syn::Type> {
 struct DefineFuncInput {
     func_name: Ident,
     closure: syn::ExprClosure,
+    failable: bool,
 }
 
 impl syn::parse::Parse for DefineFuncInput {
@@ -74,7 +80,25 @@ impl syn::parse::Parse for DefineFuncInput {
         let func_name: Ident = input.parse()?;
         input.parse::<syn::Token![,]>()?;
         let closure: syn::ExprClosure = input.parse()?;
-
-        Ok(DefineFuncInput { func_name, closure })
+        match input.parse::<syn::Token![,]>() {
+            Ok(_) => {
+                let failable = match input.parse::<syn::LitBool>() {
+                    Ok(token) => token.value,
+                    Err(_) => false,
+                };
+                // allow trailing comma
+                let _ = input.parse::<syn::Token![,]>();
+                Ok(DefineFuncInput {
+                    func_name,
+                    closure,
+                    failable,
+                })
+            }
+            Err(_) => Ok(DefineFuncInput {
+                func_name,
+                closure,
+                failable: false,
+            }),
+        }
     }
 }

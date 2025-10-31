@@ -2,14 +2,14 @@
 #let math-utils-wasm = plugin("math-utils.wasm")
 
 #import "number/complex/init.typ": (
-  Complex,
-  complex as c_from,
+  complex,
+  from as c_from,
   to-bytes as c_to-bytes,
   from-bytes as c_from-bytes,
 )
 #import "number/rational/init.typ": (
-  Rational,
-  rational as q_from,
+  rational,
+  from as q_from,
   to-bytes as q_to-bytes,
   from-bytes as q_from-bytes,
 )
@@ -70,11 +70,11 @@
   let exceptions = ("complex_pow_complex": true, "parse_complex": true, "beta_complex": true)
   let funcs = wasm-funcs.keys()
     .filter(key => key.ends-with("_complex") and key not in exceptions)
-    .map(key => (key.slice(0, -"_complex".len()), convert-wasm-func(key, (Complex, ), Complex)))
+    .map(key => (key.slice(0, -"_complex".len()), convert-wasm-func(key, (complex, ), complex)))
     .to-dict()
   funcs
 } + (
-  beta: convert-wasm-func("beta_complex", (Complex, Complex), Complex)
+  beta: convert-wasm-func("beta_complex", (complex, complex), complex)
 )
 
 #let real-funcs = {

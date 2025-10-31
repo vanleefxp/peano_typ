@@ -1,6 +1,6 @@
 // -> number/rational/repr.typ
 
-#import "init.typ": rational
+#import "init.typ": from
 
 #let /*pub*/ to-str(
     n,
@@ -8,7 +8,7 @@
     denom-one: false,
     hyphen-minus: false,
 ) = {
-  let n = rational(n)
+  let n = from(n)
   let (sign, num, den) = n
   if den == 0 {
     if num == 0 {
@@ -47,7 +47,7 @@
   denom-one: false,
   sign-on-num: false,
 ) = {
-  let n = rational(n)
+  let n = from(n)
   let (sign, num, den) = n
   if den == 0 {
     if num == 0 {

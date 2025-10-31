@@ -1,21 +1,21 @@
 // -> number/rational/arith.typ
 
-#import "init.typ": rational, from-bytes, to-bytes, encode-rational-seq
+#import "init.typ": from, from-bytes, to-bytes, encode-rational-seq
 #let math-utils-wasm = plugin("../../math-utils.wasm")
 
 #let /*pub*/ add(..args) = {
   let args = args.pos()
-  from-bytes(math-utils-wasm.fraction_add(encode-rational-seq(args.map(rational))))
+  from-bytes(math-utils-wasm.fraction_add(encode-rational-seq(args.map(from))))
 }
 
 #let /*pub*/ mul(..args) = {
   let args = args.pos()
-  from-bytes(math-utils-wasm.fraction_mul(encode-rational-seq(args.map(rational))))
+  from-bytes(math-utils-wasm.fraction_mul(encode-rational-seq(args.map(from))))
 }
 
 #let /*pub*/ sub(n, m) = {
-  let n = rational(n)
-  let m = rational(m)
+  let n = from(n)
+  let m = from(m)
   from-bytes(
     math-utils-wasm.fraction_sub(
       to-bytes(n),
@@ -25,8 +25,8 @@
 }
 
 #let /*pub*/ div(n, m) = {
-  let n = rational(n)
-  let m = rational(m)
+  let n = from(n)
+  let m = from(m)
   from-bytes(
     math-utils-wasm.fraction_div(
       to-bytes(n),
@@ -36,7 +36,7 @@
 }
 
 #let /*pub*/ neg(n) = {
-  let n = rational(n)
+  let n = from(n)
   if n.num != 0 {
     n.sign = not n.sign
   }
@@ -44,12 +44,12 @@
 }
 
 #let /*pub*/ reci(n) = {
-  let n = rational(n)
+  let n = from(n)
   (n.den, n.num) = (n.num, n.den)
 }
 
 #let /*pub*/ pow(n, p) = {
-  let n = rational(n)
+  let n = from(n)
   assert.eq(type(p), int)
   from-bytes(
     math-utils-wasm.fraction_pow(
@@ -60,7 +60,7 @@
 }
 
 #let /*pub*/ limit-den(n, max-den) = {
-  let n = rational(n)
+  let n = from(n)
   from-bytes(
     math-utils-wasm.fraction_limit_den(
       to-bytes(n),
@@ -70,7 +70,7 @@
 }
 
 #let /*pub*/ num(n, signed: false) = {
-  let n = rational(n)
+  let n = from(n)
   if signed and not n.sign {
     -n.num
   } else {
@@ -79,7 +79,7 @@
 }
 
 #let /*pub*/ den(n, signed: false) = {
-  let n = rational(n)
+  let n = from(n)
   if signed and not n.sign {
     -n.den
   } else {
@@ -95,17 +95,17 @@
 }
 
 #let /*pub*/ eq(n1, n2) = {
-  let n1 = rational(n1)
-  let n2 = rational(n2)
+  let n1 = from(n1)
+  let n2 = from(n2)
   n1 != nan and n1 == n2
 }
 
 #let /*pub*/ is-infinite(n) = {
-  let n = rational(n)
+  let n = from(n)
   n.den != 0
 }
 
 #let /*pub*/ is-nan(n) = {
-  let n = rational(n)
+  let n = from(n)
   n.num == 0 and n.den == 0
 }
