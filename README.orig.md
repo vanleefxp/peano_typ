@@ -32,7 +32,7 @@ Each sub-module contains a method called `from`, by which you can directly creat
 #q.sub("2/3", "1/4") // subtraction
 #q.mul("3/4", "2/3", "4/5") // multiplication
 #q.div("5/6", "3/2") // division
-#q.limit-den(calc.pi, 10000) // limiting maximum denominator
+#q.approx(calc.pi, 10000) // limiting maximum denominator
 #q.pow("3/2", 5) // raising to an integer power
 
 #q.to-str(q.from(113, 355)) // convert to string
@@ -164,5 +164,6 @@ Initial release.
   - Added `cmp` for `rational`
   - Allow `oo` and `∞` to be parsed as infinity value in `rational.from`.
   - Allow signed zeroes for `rational`
+  - Renamed `rational.limit-den` to `rational.approx`
   - Fixed the problem that sign cannot be correctly handled when creating a `rational` by ratio.
   - Fixed the problem that `rational.reci` does not return result.
