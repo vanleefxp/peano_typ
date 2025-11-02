@@ -22,7 +22,7 @@ use wasm_minimal_protocol::*;
 
 use math_utils_proc_macro::define_func;
 
-use crate::frac::{FracData, MpqExt};
+use crate::frac::{Approx, ExtendedNumber, FracData, MpqExt, SignStrict};
 
 mod complex;
 mod frac;
@@ -351,7 +351,11 @@ type q64 = fraction::Fraction;
 define_func!(
     parse_fraction,
     |src: String| {
-        let myfrac = frac::Frac::<u64>::from_str(&src.replace("\u{2212}", "-"))?;
+        let myfrac = frac::Frac::<u64>::from_str(
+            &src.replace("\u{2212}", "-")
+                .replace("oo", "inf")
+                .replace("\u{221E}", "inf"),
+        )?;
         Ok::<q64, anyhow::Error>(myfrac.into())
     },
     true,
@@ -360,8 +364,8 @@ define_func!(fraction_from_float, |num: f64| q64::from(num));
 define_func!(fraction_sub, |x: q64, y: q64| x - y);
 define_func!(fraction_div, |x: q64, y: q64| x / y);
 define_func!(fraction_cmp, |x: q64, y: q64| x.cmp(&y));
-define_func!(fraction_limit_den, |x: q64, max_den: u64| q64::from(
-    frac::Frac::<u64>::from(x).limit_den(max_den)
+define_func!(fraction_approx, |x: q64, max_den: u64| q64::from(
+    frac::Frac::<u64>::from(x).approx(&max_den)
 ));
 
 #[wasm_func]
@@ -477,8 +481,12 @@ define_func!(mpz_egcd, |m: Mpz, n: Mpz| Mpz::extended_gcd(m, n));
 define_func!(
     parse_mpq,
     |src: String| {
-        MpqExt::from_str(&src.replace("\u{2212}", "-"))
-            .map_err(|_| anyhow!("Invalid number format"))
+        MpqExt::from_str(
+            &src.replace("\u{2212}", "-")
+                .replace("oo", "inf")
+                .replace("\u{221E}", "inf"),
+        )
+        .map_err(|_| anyhow!("Invalid number format"))
     },
     true
 );
@@ -521,6 +529,10 @@ define_func!(
 define_func!(mpq_cmp, |x: MpqExt, y: MpqExt| x.partial_cmp(&y));
 define_func!(mpq_cmp_strict, |x: MpqExt, y: MpqExt| x
     .partial_cmp_strict(&y));
+define_func!(mpq_is_finite, |x: MpqExt| x.is_finite());
+define_func!(mpq_is_infinite, |x: MpqExt| x.is_infinite());
+define_func!(mpq_is_nan, |x: MpqExt| x.is_nan());
+define_func!(mpq_approx, |x: MpqExt, max_den: Mpn| x.approx(&max_den));
 
 flags! {
     pub enum FracLayoutOptions: u8 {

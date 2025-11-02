@@ -11,4 +11,8 @@
   sign,
   cmp,
   eq,
+  is-nan,
+  is-finite,
+  is-infinite,
+  approx,
 )

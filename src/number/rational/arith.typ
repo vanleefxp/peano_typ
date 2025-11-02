@@ -7,7 +7,7 @@
   neg,
   reci,
   pow,
-  limit-den,
+  approx,
   num,
   den,
   sign,

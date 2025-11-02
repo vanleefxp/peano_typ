@@ -46,6 +46,7 @@
 #let /*pub*/ reci(n) = {
   let n = from(n)
   (n.den, n.num) = (n.num, n.den)
+  n
 }
 
 #let /*pub*/ pow(n, p) = {
@@ -59,10 +60,10 @@
   )
 }
 
-#let /*pub*/ limit-den(n, max-den) = {
+#let /*pub*/ approx(n, max-den) = {
   let n = from(n)
   from-bytes(
-    math-utils-wasm.fraction_limit_den(
+    math-utils-wasm.fraction_approx(
       to-bytes(n),
       max-den.to-bytes()
     ),

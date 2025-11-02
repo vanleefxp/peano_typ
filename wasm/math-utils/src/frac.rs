@@ -6,18 +6,19 @@ use std::{num::ParseIntError, str::FromStr};
 
 use anyhow::{Context, anyhow, bail};
 use fraction::{ConstOne, Ratio};
-use fraction::{GenericFraction, Sign, generic::GenericInteger};
+use fraction::{GenericFraction, generic::GenericInteger};
 use malachite::base::num::arithmetic::traits::{
-    Abs, AbsAssign, NegAssign, Pow, PowAssign, Reciprocal, ReciprocalAssign, Sign as Sign_,
+    Abs, AbsAssign, NegAssign, Pow, PowAssign, Reciprocal, ReciprocalAssign, Sign,
 };
 use malachite::base::num::basic::traits::{
     Infinity, NaN, NegativeInfinity, NegativeOne, NegativeZero, One, OneHalf, Two, Zero,
 };
+use malachite::rational::arithmetic::traits::{Approximate, ApproximateAssign};
 use malachite::{Integer as Mpz, Natural as Mpn, Rational as Mpq};
-use num::{Zero as NumZero, integer::Integer};
+use num::integer::Integer;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct FracData<T>
 where
     T: Integer + Clone + Copy,
@@ -29,6 +30,16 @@ where
 
 pub trait Ten {
     const TEN: Self;
+}
+
+pub trait Approx<N> {
+    type Output;
+    fn approx(self, max_den: &N) -> Self::Output;
+}
+
+#[allow(unused)]
+pub trait ApproxAssign<N> {
+    fn approx_assign(&mut self, max_den: &N);
 }
 
 impl Ten for Mpn {
@@ -88,17 +99,18 @@ where
     T: Integer + Clone + Copy,
 {
     fn from(value: GenericFraction<T>) -> Self {
+        use fraction::Sign::*;
         match value {
             GenericFraction::Rational(sign, ratio) => {
                 let (num, den) = ratio.into_raw();
                 FracData {
-                    sign: sign == Sign::Plus,
+                    sign: sign == Plus,
                     num,
                     den,
                 }
             }
             GenericFraction::Infinity(sign) => FracData {
-                sign: sign == Sign::Plus,
+                sign: sign == Plus,
                 num: T::one(),
                 den: T::zero(),
             },
@@ -116,15 +128,17 @@ where
     T: Integer + Clone + Copy,
 {
     fn into(self) -> GenericFraction<T> {
+        use GenericFraction::*;
+        use fraction::Sign::*;
         if self.den == T::zero() {
             if self.num == T::zero() {
-                GenericFraction::NaN
+                NaN
             } else {
-                let sign = if self.sign { Sign::Plus } else { Sign::Minus };
-                GenericFraction::Infinity(sign)
+                let sign = if self.sign { Plus } else { Minus };
+                Infinity(sign)
             }
         } else {
-            let sign = if self.sign { Sign::Plus } else { Sign::Minus };
+            let sign = if self.sign { Plus } else { Minus };
             GenericFraction::new_raw_signed(sign, self.num, self.den)
         }
     }
@@ -141,10 +155,10 @@ where
 
 fn limit_den_helper<T>((num, den): (T, T), max_den: T) -> Result<(T, T), String>
 where
-    T: Integer + Clone + Copy,
+    T: Integer + Clone + Copy + Zero + One + Sign,
 {
-    if max_den > T::zero() {
-        let (mut p0, mut q0, mut p1, mut q1) = (T::zero(), T::one(), T::one(), T::zero());
+    if max_den.sign().is_gt() {
+        let (mut p0, mut q0, mut p1, mut q1) = (T::ZERO, T::ONE, T::ONE, T::ZERO);
         let (mut n, mut d) = (num, den);
         loop {
             let a = n / d;
@@ -168,16 +182,66 @@ where
     }
 }
 
-impl<T> Frac<T>
+// fn limit_den_helper<T>(num: &T, den: &T, max_den: &T) -> Result<(T, T), String>
+// where
+//     T: Clone + Zero + One + Sign_ + Add<Output = T> + Sub<Output = T> + Mul<Output = T>  + Div<Output = T>,
+//     for<'a> &'a T: Ord + Sub<T, Output = T> + Mul<&'a T, Output = T>,
+// {
+//     if max_den.sign().is_ge() {
+//         let (mut p0, mut q0, mut p1, mut q1) = (T::ZERO, T::ONE, T::ONE, T::ZERO);
+//         let (mut n, mut d) = (num.clone(), den.clone());
+//         loop {
+//             let a = n / d;
+//             let q2 = q0 + &a * &q1;
+//             if &q2 > max_den {
+//                 break;
+//             }
+//             let (new_p0, new_q0) = (p1, q1);
+//             let (new_p1, new_q1) = (p0 + a * p1, q2);
+//             (p1, q1) = (new_p1, new_q1);
+//             (p0, q0) = (new_p0, new_q0);
+//             (n, d) = (d, n - a * d)
+//         }
+//         let k = (max_den - q0) / q1;
+//         if &((d + d) * (q0 + k * q1)) <= den {
+//             Ok((p1, q1))
+//         } else {
+//             Ok((p0 + k * p1, q0 + k * q1))
+//         }
+//     } else {
+//         Err("max_den must be positive".to_string())
+//     }
+// }
+
+// impl<T> Frac<T>
+// where
+//     T: Integer + Clone + Copy,
+// {
+//     pub fn limit_den(self: Frac<T>, max_den: T) -> Frac<T> {
+//         match self.0 {
+//             GenericFraction::Rational(sign, ratio) => {
+//                 let (num, den) = ratio.into_raw();
+//                 let (num, den) = limit_den_helper((num, den), max_den).unwrap();
+//                 GenericFraction::Rational(sign, Ratio::new_raw(num, den)).into()
+//             }
+//             special => special.into(),
+//         }
+//     }
+// }
+
+impl<T> Approx<T> for Frac<T>
 where
-    T: Integer + Clone + Copy,
+    T: Integer + Clone + Copy + Zero + One + Sign,
 {
-    pub fn limit_den(self: Frac<T>, max_den: T) -> Frac<T> {
+    type Output = Self;
+
+    fn approx(self, max_den: &T) -> Self::Output {
+        use GenericFraction::*;
         match self.0 {
-            GenericFraction::Rational(sign, ratio) => {
+            Rational(sign, ratio) => {
                 let (num, den) = ratio.into_raw();
-                let (num, den) = limit_den_helper((num, den), max_den).unwrap();
-                GenericFraction::Rational(sign, Ratio::new_raw(num, den)).into()
+                let (num, den) = limit_den_helper((num, den), *max_den).unwrap();
+                Rational(sign, Ratio::new_raw(num, den)).into()
             }
             special => special.into(),
         }
@@ -188,36 +252,38 @@ impl Pow<i64> for Frac<u64> {
     type Output = Self;
 
     fn pow(self, rhs: i64) -> Self::Output {
+        use fraction::GenericFraction::*;
+        use fraction::Sign::*;
         if rhs == 0 {
             GenericFraction::ONE.into()
         } else {
             match self.0 {
-                GenericFraction::Rational(sign, ratio) => {
+                Rational(sign, ratio) => {
                     let (num, den) = ratio.into_raw();
                     let sign = match sign {
-                        Sign::Plus => Sign::Plus,
-                        Sign::Minus => {
+                        Plus => Plus,
+                        Minus => {
                             if rhs % 2 == 0 {
-                                Sign::Plus
+                                Plus
                             } else {
-                                Sign::Minus
+                                Minus
                             }
                         }
                     };
                     if rhs > 0 {
                         let (num, den) = (num.pow(rhs as u32), den.pow(rhs as u32));
-                        GenericFraction::Rational(sign, Ratio::new_raw(num, den)).into()
+                        Rational(sign, Ratio::new_raw(num, den)).into()
                     } else {
                         let (num, den) = (den.pow((-rhs) as u32), num.pow((-rhs) as u32));
-                        GenericFraction::Rational(sign, Ratio::new_raw(num, den)).into()
+                        Rational(sign, Ratio::new_raw(num, den)).into()
                     }
                 }
-                GenericFraction::NaN | GenericFraction::Infinity(Sign::Plus) => self,
-                GenericFraction::Infinity(Sign::Minus) => {
+                NaN | Infinity(Plus) => self,
+                Infinity(Minus) => {
                     if rhs % 2 == 1 {
                         self
                     } else {
-                        GenericFraction::Infinity(Sign::Plus).into()
+                        Infinity(Plus).into()
                     }
                 }
             }
@@ -343,133 +409,9 @@ fn split_decimal_notation(src: &str) -> Result<FractionFromDecimalResult, anyhow
     }
 }
 
-// fn empty_safe_parse<T>(src: &str) -> Result<T, ParseIntError>
-// where
-//     T: FromStr<Err = ParseIntError> + NumZero,
-// {
-//     if src.is_empty() {
-//         Ok(T::zero())
-//     } else {
-//         T::from_str(src)
-//     }
-// }
-
-// fn fraction_from_decimal<T>(
-//     sign: Sign,
-//     int_part: &str,
-//     repeating_part: &str,
-//     exp: isize,
-// ) -> Result<GenericFraction<T>, anyhow::Error>
-// where
-//     T: GenericInteger
-//         + Clone
-//         + Copy
-//         + FromStr<Err = ParseIntError>
-//         + Pow<u64, Output = T>
-//         + Into<GenericFraction<T>>,
-// {
-//     if !int_part.chars().all(|c| c.is_digit(10)) {
-//         bail!("Invalid integer part")
-//     }
-//     if !repeating_part.chars().all(|c| c.is_digit(10)) {
-//         bail!("Invalid repeating part")
-//     }
-//     let repeating_part_len = repeating_part.len() as u64;
-//     let int_part: T = empty_safe_parse(int_part)?;
-//     let mut result: GenericFraction<T> = int_part.into();
-//     if repeating_part_len > 0 {
-//         let repeat_den: T = T::_10().pow(repeating_part_len) - T::_1();
-//         let repeat_num: T = empty_safe_parse(repeating_part)?;
-//         result += if let Some(fr) = GenericFraction::new_generic(Sign::Plus, repeat_num, repeat_den)
-//         {
-//             fr
-//         } else {
-//             bail!("Invalid fraction format")
-//         };
-//     }
-//     if exp > 0 {
-//         result *= T::_10().pow(exp as u64);
-//     } else if exp < 0 {
-//         result /= T::_10().pow((-exp) as u64);
-//     }
-//     match sign {
-//         Sign::Plus => Ok(result),
-//         Sign::Minus => Ok(-result),
-//     }
-// }
-
-// pub fn parse_fraction<T>(src: &str) -> Result<GenericFraction<T>, anyhow::Error>
-// where
-//     T: GenericInteger
-//         + Clone
-//         + Copy
-//         + FromStr<Err = ParseIntError>
-//         + Pow<u64, Output = T>
-//         + Into<GenericFraction<T>>
-//         + fraction::Integer,
-// {
-//     if src.eq_ignore_ascii_case("inf") {
-//         return Ok(GenericFraction::infinity());
-//     } else if src.eq_ignore_ascii_case("-inf") {
-//         return Ok(GenericFraction::neg_infinity());
-//     } else if src.eq_ignore_ascii_case("nan") {
-//         return Ok(GenericFraction::nan());
-//     }
-//     match src.find('/') {
-//         Some(idx) => {
-//             let num_src = &src[..idx];
-//             let den_src = &src[idx + 1..];
-//             let mut sign = Sign::Plus;
-
-//             let num_src = match num_src.chars().next() {
-//                 Some('+') => &num_src[1..],
-//                 Some('-') => {
-//                     sign = -sign;
-//                     &num_src[1..]
-//                 }
-//                 _ => &num_src[..],
-//             };
-//             let den_src = match den_src.chars().next() {
-//                 Some('+') => &den_src[1..],
-//                 Some('-') => {
-//                     sign = -sign;
-//                     &den_src[1..]
-//                 }
-//                 _ => &den_src[..],
-//             };
-
-//             let num = if num_src.is_empty() {
-//                 T::_1()
-//             } else {
-//                 T::from_str(num_src)?
-//             };
-//             let den = if den_src.is_empty() {
-//                 T::_1()
-//             } else {
-//                 T::from_str(den_src)?
-//             };
-
-//             if den.is_zero() {
-//                 if num.is_zero() {
-//                     Ok(GenericFraction::NaN)
-//                 } else {
-//                     Ok(GenericFraction::Infinity(sign))
-//                 }
-//             } else {
-//                 Ok(GenericFraction::Rational(sign, Ratio::new(num, den)))
-//             }
-//         }
-//         None => {
-//             let FractionFromDecimalResult { sign, int_part, repeating_part, exp } = split_decimal_notation(src)?;
-//             let sign = if sign { Sign::Plus } else { Sign::Minus };
-//             fraction_from_decimal(sign, &int_part, &repeating_part, exp)
-//         }
-//     }
-// }
-
 enum ParseFractionResult<T> {
     Rational(bool, T, T),
-    Infinity(bool),
+    Inf(bool),
     Zero(bool),
     NaN,
 }
@@ -481,7 +423,7 @@ struct FractionFromDecimalResult {
     exp: isize,
 }
 
-fn fraction_from_decimal_1<T, E>(
+fn fraction_from_decimal<T, E>(
     from_decimal_result: FractionFromDecimalResult,
 ) -> Result<ParseFractionResult<T>, anyhow::Error>
 where
@@ -546,7 +488,7 @@ where
     Ok(ParseFractionResult::Rational(sign, num, den))
 }
 
-fn parse_fraction_1<T, E>(src: &str) -> Result<ParseFractionResult<T>, anyhow::Error>
+fn parse_decimal_notation<T, E>(src: &str) -> Result<ParseFractionResult<T>, anyhow::Error>
 where
     T: Clone
         + FromStr<Err = E>
@@ -561,10 +503,28 @@ where
         + One
         + Ten,
 {
-    if src.eq_ignore_ascii_case("inf") {
-        return Ok(ParseFractionResult::Infinity(true));
+    Ok(fraction_from_decimal(split_decimal_notation(src)?)?)
+}
+
+fn parse_fraction<T, E>(src: &str) -> Result<ParseFractionResult<T>, anyhow::Error>
+where
+    T: Clone
+        + FromStr<Err = E>
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + for<'a> MulAssign<&'a T>
+        + AddAssign
+        + PartialEq
+        + Pow<u64, Output = T>
+        + Zero
+        + One
+        + Ten,
+{
+    if src.eq_ignore_ascii_case("inf") | src.eq_ignore_ascii_case("+inf") {
+        return Ok(ParseFractionResult::Inf(true));
     } else if src.eq_ignore_ascii_case("-inf") {
-        return Ok(ParseFractionResult::Infinity(false));
+        return Ok(ParseFractionResult::Inf(false));
     } else if src.eq_ignore_ascii_case("nan") {
         return Ok(ParseFractionResult::NaN);
     }
@@ -606,7 +566,7 @@ where
                 if num == T::ZERO {
                     Ok(ParseFractionResult::NaN)
                 } else {
-                    Ok(ParseFractionResult::Infinity(sign))
+                    Ok(ParseFractionResult::Inf(sign))
                 }
             } else if num == T::ZERO {
                 Ok(ParseFractionResult::Zero(sign))
@@ -614,7 +574,7 @@ where
                 Ok(ParseFractionResult::Rational(sign, num, den))
             }
         }
-        None => Ok(fraction_from_decimal_1(split_decimal_notation(src)?)?),
+        None => parse_decimal_notation(src),
     }
 }
 
@@ -624,16 +584,14 @@ where
 {
     fn from(value: ParseFractionResult<T>) -> Self {
         use ParseFractionResult::*;
+        use fraction::Sign::*;
         match value {
-            Rational(s, num, den) => GenericFraction::Rational(
-                if s { Sign::Plus } else { Sign::Minus },
-                Ratio::new(num, den),
-            ),
-            Infinity(s) => {
-                GenericFraction::Infinity(if s { Sign::Plus } else { Sign::Minus }).into()
+            Rational(s, num, den) => {
+                GenericFraction::Rational(if s { Plus } else { Minus }, Ratio::new(num, den))
             }
+            Inf(s) => GenericFraction::Infinity(if s { Plus } else { Minus }).into(),
             Zero(s) => GenericFraction::Rational(
-                if s { Sign::Plus } else { Sign::Minus },
+                if s { Plus } else { Minus },
                 Ratio::new_raw(T::ZERO, T::ONE),
             ),
             NaN => GenericFraction::NaN,
@@ -658,16 +616,78 @@ where
     type Err = anyhow::Error;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        Ok(parse_fraction_1(src)?.into())
+        Ok(parse_fraction(src)?.into())
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Hash)]
+// Extending malachite::Rational with infinity and NaN support
+
+#[derive(Clone, Serialize, Deserialize, Hash)]
 pub enum MpqExt {
     Zero(bool),
     Inf(bool),
     NaN,
     Rational(Mpq),
+}
+
+pub trait SignStrict {
+    fn sign_strict(&self) -> Ordering;
+}
+
+#[allow(unused)]
+pub trait ExtendedNumber: Sign + SignStrict {
+    fn is_nan(&self) -> bool;
+    fn is_infinite(&self) -> bool;
+    fn is_zero(&self) -> bool {
+        self.sign().is_eq()
+    }
+    fn is_finite(&self) -> bool {
+        !self.is_nan() & !self.is_infinite()
+    }
+    fn is_sign_positive(&self) -> bool {
+        !self.is_nan() & self.sign_strict().is_gt()
+    }
+    fn is_sign_negative(&self) -> bool {
+        !self.is_sign_positive() & !self.is_nan()
+    }
+}
+
+impl<T> SignStrict for T
+where
+    T: num::Float + Zero,
+{
+    fn sign_strict(&self) -> Ordering {
+        use Ordering::*;
+        match self.partial_cmp(&Self::ZERO) {
+            Some(ordering) => ordering,
+            None => Equal,
+        }
+    }
+}
+
+impl<T> ExtendedNumber for T
+where
+    T: num::Float + Sign + SignStrict,
+{
+    fn is_nan(&self) -> bool {
+        num::Float::is_nan(*self)
+    }
+
+    fn is_finite(&self) -> bool {
+        num::Float::is_finite(*self)
+    }
+
+    fn is_infinite(&self) -> bool {
+        num::Float::is_infinite(*self)
+    }
+
+    fn is_sign_positive(&self) -> bool {
+        num::Float::is_sign_positive(*self)
+    }
+
+    fn is_sign_negative(&self) -> bool {
+        num::Float::is_sign_negative(*self)
+    }
 }
 
 impl MpqExt {
@@ -757,55 +777,6 @@ impl MpqExt {
         }
     }
 
-    #[inline]
-    pub fn is_nan(&self) -> bool {
-        use MpqExt::*;
-        match self {
-            NaN => true,
-            _ => false,
-        }
-    }
-
-    #[inline]
-    pub fn is_zero(&self) -> bool {
-        match self {
-            Self::Zero(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn sign(&self) -> Ordering {
-        use MpqExt::*;
-        use Ordering::*;
-        match self {
-            Zero(_) | NaN => Equal,
-            &Inf(s) => {
-                if s {
-                    Greater
-                } else {
-                    Less
-                }
-            }
-            Rational(q) => q.sign(),
-        }
-    }
-
-    pub fn sign_strict(&self) -> Ordering {
-        use MpqExt::*;
-        use Ordering::*;
-        match self {
-            NaN => Equal,
-            &Zero(s) | &Inf(s) => {
-                if s {
-                    Greater
-                } else {
-                    Less
-                }
-            }
-            Rational(q) => q.sign(),
-        }
-    }
-
     pub fn from_sign_and_naturals(sign: bool, n: Mpn, d: Mpn) -> Self {
         match (n, d) {
             (Mpn::ZERO, Mpn::ZERO) => Self::NaN,
@@ -843,18 +814,115 @@ impl MpqExt {
     }
 }
 
+impl Sign for MpqExt {
+    fn sign(&self) -> Ordering {
+        use MpqExt::*;
+        use Ordering::*;
+        match self {
+            Zero(_) | NaN => Equal,
+            &Inf(s) => {
+                if s {
+                    Greater
+                } else {
+                    Less
+                }
+            }
+            Rational(q) => q.sign(),
+        }
+    }
+}
+
+impl SignStrict for MpqExt {
+    fn sign_strict(&self) -> Ordering {
+        use MpqExt::*;
+        use Ordering::*;
+        match self {
+            NaN => Equal,
+            &Zero(s) | &Inf(s) => {
+                if s {
+                    Greater
+                } else {
+                    Less
+                }
+            }
+            Rational(q) => q.sign(),
+        }
+    }
+}
+
+impl ExtendedNumber for MpqExt {
+    #[inline]
+    fn is_nan(&self) -> bool {
+        use MpqExt::*;
+        match self {
+            NaN => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    fn is_zero(&self) -> bool {
+        match self {
+            Self::Zero(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    fn is_infinite(&self) -> bool {
+        use MpqExt::*;
+        match self {
+            Inf(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    fn is_finite(&self) -> bool {
+        use MpqExt::*;
+        match self {
+            Inf(_) | NaN => false,
+            _ => true,
+        }
+    }
+
+    #[inline]
+    fn is_sign_positive(&self) -> bool {
+        use MpqExt::*;
+        match self {
+            NaN => false,
+            &Zero(s) | &Inf(s) => s,
+            Rational(q) => q.sign().is_gt(),
+        }
+    }
+
+    #[inline]
+    fn is_sign_negative(&self) -> bool {
+        use MpqExt::*;
+        match self {
+            NaN => false,
+            &Zero(s) | &Inf(s) => !s,
+            Rational(q) => q.sign().is_lt(),
+        }
+    }
+}
+
+impl From<ParseFractionResult<Mpn>> for MpqExt {
+    fn from(value: ParseFractionResult<Mpn>) -> Self {
+        use ParseFractionResult::*;
+        match value {
+            NaN => Self::NaN,
+            Zero(s) => Self::Zero(s),
+            Inf(s) => Self::Inf(s),
+            Rational(s, n, d) => Self::Rational(Mpq::from_sign_and_naturals(s, n, d)),
+        }
+    }
+}
+
 impl FromStr for MpqExt {
     type Err = anyhow::Error;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let parse_result: ParseFractionResult<Mpn> = parse_fraction_1(src)?;
-        Ok(match parse_result {
-            ParseFractionResult::NaN => Self::NaN,
-            ParseFractionResult::Zero(s) => Self::Zero(s),
-            ParseFractionResult::Infinity(s) => Self::Inf(s),
-            ParseFractionResult::Rational(s, n, d) => {
-                Self::Rational(Mpq::from_sign_and_naturals(s, n, d))
-            }
-        })
+        Ok(parse_fraction(src)?.into())
     }
 }
 
@@ -897,7 +965,7 @@ macro_rules! impl_mpq_ext_try_from_float {
                 use MpqExt::*;
                 if value.is_nan() {
                     Ok(NaN)
-                } else if value.is_zero() {
+                } else if value == <$t>::ZERO {
                     Ok(Zero(value.is_sign_positive()))
                 } else if value.is_infinite() {
                     Ok(Inf(value.is_sign_positive()))
@@ -1326,7 +1394,7 @@ impl MulAssign for MpqExt {
     fn mul_assign(&mut self, rhs: Self) {
         use MpqExt::*;
         match rhs {
-            MpqExt::ONE => {}
+            Rational(Mpq::ONE) => {}
             _ => {
                 let temp = std::mem::replace(self, NaN);
                 *self = temp * rhs;
@@ -1339,7 +1407,7 @@ impl MulAssign<&MpqExt> for MpqExt {
     fn mul_assign(&mut self, rhs: &Self) {
         use MpqExt::*;
         match rhs {
-            &MpqExt::ONE => {}
+            Rational(Mpq::ONE) => {}
             _ => {
                 let temp = std::mem::replace(self, NaN);
                 *self = temp * rhs;
@@ -1618,24 +1686,26 @@ impl_abs_for_mpq_ext!(MpqExt, &MpqExt);
 
 impl AbsAssign for MpqExt {
     fn abs_assign(&mut self) {
+        use MpqExt::*;
         match self {
-            MpqExt::NaN => {}
-            MpqExt::Zero(s) => *s = true,
-            MpqExt::Inf(s) => *s = true,
-            MpqExt::Rational(q) => (*q).abs_assign(),
+            NaN => {}
+            Zero(s) => *s = true,
+            Inf(s) => *s = true,
+            Rational(q) => (*q).abs_assign(),
         }
     }
 }
 
 impl Display for MpqExt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use MpqExt::*;
         match self {
-            MpqExt::NaN => write!(f, "NaN"),
-            MpqExt::Zero(true) => write!(f, "0"),
-            MpqExt::Zero(false) => write!(f, "-0"),
-            MpqExt::Inf(true) => write!(f, "inf"),
-            MpqExt::Inf(false) => write!(f, "-inf"),
-            MpqExt::Rational(q) => Display::fmt(q, f),
+            NaN => write!(f, "NaN"),
+            Zero(true) => write!(f, "0"),
+            Zero(false) => write!(f, "-0"),
+            Inf(true) => write!(f, "inf"),
+            Inf(false) => write!(f, "-inf"),
+            Rational(q) => Display::fmt(q, f),
         }
     }
 }
@@ -1652,6 +1722,7 @@ impl PartialOrd for MpqExt {
         use Ordering::*;
         match (self, other) {
             (MpqExt::NaN, _) | (_, MpqExt::NaN) => None,
+            (Inf(s1), Inf(s2)) if s1 == s2 => Some(Equal),
             (_, Inf(true)) | (Inf(false), _) => Some(Less),
             (Inf(true), _) | (_, Inf(false)) => Some(Greater),
             (Zero(_), Zero(_)) => Some(Equal),
@@ -1662,18 +1733,109 @@ impl PartialOrd for MpqExt {
     }
 }
 
+impl PartialEq for MpqExt {
+    fn eq(&self, other: &Self) -> bool {
+        use MpqExt::*;
+        match (self, other) {
+            (Zero(_), Zero(_)) => true,
+            (Inf(s1), Inf(s2)) => s1 == s2,
+            (Rational(q1), Rational(q2)) => q1 == q2,
+            _ => false,
+        }
+    }
+}
+
 impl MpqExt {
     pub fn partial_cmp_strict(&self, other: &Self) -> Option<Ordering> {
         use MpqExt::*;
         use Ordering::*;
         match (self, other) {
             (MpqExt::NaN, _) | (_, MpqExt::NaN) => None,
+            (Inf(s1), Inf(s2)) if s1 == s2 => Some(Equal),
             (_, Inf(true)) | (Inf(false), _) => Some(Less),
             (Inf(true), _) | (_, Inf(false)) => Some(Greater),
             (Zero(s1), Zero(s2)) => s1.partial_cmp(s2),
             (Zero(_), Rational(q)) => Some(q.sign().reverse()),
             (Rational(q), Zero(_)) => Some(q.sign()),
             (Rational(q1), Rational(q2)) => q1.partial_cmp(q2),
+        }
+    }
+}
+
+impl Approx<Mpn> for Mpq {
+    type Output = Self;
+    fn approx(self, max_den: &Mpn) -> Self::Output {
+        self.approximate(max_den)
+    }
+}
+
+impl Approx<Mpn> for &Mpq {
+    type Output = Mpq;
+    fn approx(self, max_den: &Mpn) -> Self::Output {
+        self.approximate(max_den)
+    }
+}
+
+impl ApproxAssign<Mpn> for Mpq {
+    fn approx_assign(&mut self, max_den: &Mpn) {
+        self.approximate_assign(max_den);
+    }
+}
+
+impl Approx<Mpn> for MpqExt {
+    type Output = MpqExt;
+    fn approx(self, max_den: &Mpn) -> Self::Output {
+        use MpqExt::*;
+        match self {
+            NaN => NaN,
+            Zero(s) => Zero(s),
+            Inf(s) => Inf(s),
+            Rational(q) => {
+                let orig_sign = q.sign().is_gt();
+                let new_value = q.approximate(max_den);
+                match new_value {
+                    Mpq::ZERO => Zero(orig_sign),
+                    _ => Rational(new_value),
+                }
+            }
+        }
+    }
+}
+
+impl Approx<Mpn> for &MpqExt {
+    type Output = MpqExt;
+    fn approx(self, max_den: &Mpn) -> Self::Output {
+        use MpqExt::*;
+        match self {
+            NaN => NaN,
+            &Zero(s) => Zero(s),
+            &Inf(s) => Inf(s),
+            Rational(q) => {
+                let orig_sign = q.sign().is_gt();
+                let new_value = q.approximate(max_den);
+                match new_value {
+                    Mpq::ZERO => Zero(orig_sign),
+                    _ => Rational(new_value),
+                }
+            }
+        }
+    }
+}
+
+impl ApproxAssign<Mpn> for MpqExt {
+    fn approx_assign(&mut self, max_den: &Mpn) {
+        use MpqExt::*;
+        match self {
+            rational @ Rational(_) => {
+                if let Rational(q) = rational {
+                    let orig_sign = q.sign().is_gt();
+                    <Mpq as ApproximateAssign>::approximate_assign(q, max_den);
+                    if q.sign().is_eq() {
+                        *rational = Zero(orig_sign);
+                    }
+                }
+            }
+            _ => {}
         }
     }
 }

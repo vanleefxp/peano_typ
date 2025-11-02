@@ -135,11 +135,11 @@ The number theory sub module `{{name}}.ntheory` currently supports prime factori
 
 ## Mathematic functions
 
-The `{{name}}.func` sub-module provides a collection of basic mathematic functions. Some of them are also included in Typst's `calc` module, but extended to support complex number input. Other self-defined functions also support function input if they can be defined in the complex field &#x210;.
+The `{{name}}.func` sub-module provides a collection of basic mathematic functions. Some of them are also included in Typst's `calc` module, but extended to support complex number input. Other self-defined functions also support function input if they can be defined in the complex field &#x2102;.
 
 ### Special functions
 
-The `{{name}}.func.special` sub-module include special functions such as the gamma function, zeta function, Gauss error function.
+The `{{name}}.func.special` sub-module include special functions such as the gamma function, zeta function, Gauss error function, etc.
 
 ---
 
@@ -151,13 +151,18 @@ Initial release.
 
 ### `0.2.0`
 
-- Added `{{name}}.number.mp.int` and `{{name}}.number.mp.rational` number type for representing integers / rationals with arbitrary precision.
-- provided directly importable aliases for all number types in `{{name}}.number`
-- Added `gcd`, `lcm` that accepts multiple inputs in `{{name}}.ntheory`.
-- Added prime related functions `prime-pi`, `nth-prime` in `{{name}}.ntheory`.
-- Added a few more special functions.
-- Added `from-bytes` and `to-bytes` for number types in `{{name}}.number`
-- Added `cmp` for `{{name}}.number.rational`
-- Fixed the problem that sign cannot be correctly handled when creating a `rational` by ratio.
-- Used `elembic`'s custom types to represent complex and rational numbers.
-- Refactored the implementation directory of `{{name}}.number`
+- `{{name}}.ntheory`
+  - Added `gcd`, `lcm` that accepts multiple inputs in `{{name}}.ntheory`.
+  - Added prime related functions `prime-pi`, `nth-prime` in `{{name}}.ntheory`.
+- `{{name}}.func`
+  - Added a few more special functions.
+- `{{name}}.number`
+  - Added `{{name}}.number.mp.int` and `{{name}}.number.mp.rational` number type for representing integers / rationals with arbitrary precision.
+  - provided directly importable aliases for all number types in `{{name}}.number`
+  - Used `elembic`'s custom types to represent complex and rational numbers.
+  - Added `from-bytes` and `to-bytes` for number types in `{{name}}.number`
+  - Added `cmp` for `rational`
+  - Allow `oo` and `∞` to be parsed as infinity value in `rational.from`.
+  - Allow signed zeroes for `rational`
+  - Fixed the problem that sign cannot be correctly handled when creating a `rational` by ratio.
+  - Fixed the problem that `rational.reci` does not return result.

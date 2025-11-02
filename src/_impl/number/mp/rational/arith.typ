@@ -1,5 +1,7 @@
 #import "init.typ": mp-rational, to-bytes
+#import "../int/init.typ": to-bytes as mpz_to-bytes
 #let math-utils-wasm = plugin("../../../math-utils.wasm")
+#let zero-byte = bytes((0,))
 
 #let /*pub*/ add(..args) = {
   mp-rational(
@@ -50,15 +52,33 @@
   )
 }
 
-#let /*pub*/ cmp(m, n, strict: false) = {
+#let /*pub*/ cmp(m, n, strict: false, nan-eq: false) = {
   let result-byte = (
     if strict { math-utils-wasm.mpq_cmp_strict }
     else { math-utils-wasm.mpq_cmp }
   )(to-bytes(m), to-bytes(n))
-  if result-byte.len() == 0 { none }
+  if result-byte.len() == 0 {
+    if nan-eq { 0 } else { none }
+  }
   else { int.from-bytes(result-byte) }
 }
 
-#let /*pub*/ eq(m, n, strict: false) = {
-  cmp(m, n, strict: strict) == 0
+#let /*pub*/ eq(m, n, strict: false, nan-eq: false) = {
+  cmp(m, n, strict: strict, nan-eq: nan-eq) == 0
+}
+
+#let /*pub*/ is-nan(n) = {
+  math-utils-wasm.mpq_is_nan(to-bytes(n)) != zero-byte
+}
+
+#let /*pub*/ is-finite(n) = {
+  math-utils-wasm.mpq_is_finite(to-bytes(n)) != zero-byte
+}
+
+#let /*pub*/ is-infinite(n) = {
+  math-utils-wasm.mpq_is_infinite(to-bytes(n)) != zero-byte
+}
+
+#let /*pub*/ approx(n, max-den) = {
+  mp-rational(buffer: math-utils-wasm.mpq_approx(to-bytes(n), mpz_to-bytes(max-den)))
 }
