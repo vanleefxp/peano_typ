@@ -571,13 +571,13 @@ impl ToLayoutString for MpqExt {
         match self {
             NaN => "NaN".to_string(),
             &Zero(s) => {
-                let mut out = String::with_capacity(2);
-                if s {
-                    if plus_sign {
-                        out.push('+');
-                    }
-                } else {
-                    if signed_zero {
+                let mut out = String::with_capacity(if denom_one { 4 } else { 2 });
+                if signed_zero {
+                    if s {
+                        if plus_sign {
+                            out.push('+');
+                        }
+                    } else {
                         out.push(minus_sign!(hyphen_minus));
                     }
                 }
@@ -650,10 +650,19 @@ impl MpqExt {
                 den: None,
             },
             &Zero(s) => {
-                let sign = if s {
-                    if plus_sign { Some('+') } else { None }
+                // let sign = if s {
+                //     if plus_sign { Some('+') } else { None }
+                // } else {
+                //     if signed_zero { Some('\u{2212}') } else { None }
+                // };
+                let sign = if signed_zero {
+                    if s {
+                        if plus_sign { Some('+') } else { None }
+                    } else {
+                        Some('\u{2212}')
+                    }
                 } else {
-                    if signed_zero { Some('\u{2212}') } else { None }
+                    None
                 };
                 let denominator = if denom_one {
                     Some("1".to_string())
