@@ -169,3 +169,12 @@ Initial release.
   - Renamed `rational.limit-den` to `rational.approx`
   - Fixed the problem that sign cannot be correctly handled when creating a `rational` by ratio.
   - Fixed the problem that `rational.reci` does not return result.
+
+### `0.2.1`
+
+- `{{name}}.number`
+  - Support infinity and NaN values for `mp.integer`
+  - make zero value in `mp.integer` signed
+  - Support radix parsing for `mp.integer`
+  - Extended arithmetics in `mp.integer` to support infinity and NaN values. Now division by zero in `mp.integer` won't cause an error
+  - Fixed the bug that `mpq.pow` for negative zero and negative infinity returns the wrong sign

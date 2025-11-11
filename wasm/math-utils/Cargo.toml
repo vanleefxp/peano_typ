@@ -26,6 +26,7 @@ seq-macro = "0.3.6"
 # special-fun = "0.3.0"
 # complex-bessel-rs = "1.3.0"
 math-utils-proc-macro = { path = "./crates/math-utils-proc-macro" }
+math-utils-base = { path = "./crates/math-utils-base" }
 malachite = { version = "0.7.0", features = ["enable_serde"] }
 quaternion = "2.0.0"
 flagset = "0.4.7"
@@ -38,4 +39,4 @@ codegen-units = 1
 panic = 'abort'
 
 [workspace]
-members = ["crates/math-utils-proc-macro"]
+members = ["crates/math-utils-base", "crates/math-utils-proc-macro"]

@@ -16,7 +16,7 @@ It is a pity that Typst doesn't currently support custom types and overloading o
 To use these number types you have to first import the corresponding sub-module:
 
 ```typ
-#import "@preview/peano:0.2.0"
+#import "@preview/peano:0.2.1"
 #import peano.number: rational as q, complex as c
 ```
 
@@ -25,7 +25,7 @@ Each sub-module contains a method called `from`, by which you can directly creat
 ### Rational numbers
 
 ```typ
-#import "@preview/peano:0.2.0"
+#import "@preview/peano:0.2.1"
 #import peano.number: rational as q
 
 #q.from("1/2") // from string
@@ -44,7 +44,7 @@ Each sub-module contains a method called `from`, by which you can directly creat
 Currently, `rational.from` supports fraction notation and decimal notation with an optional set of [repeating digits](https://en.wikipedia.org/wiki/Repeating_decimal) enclosed in square brackets.
 
 ```typ
-#import "@preview/peano:0.2.0"
+#import "@preview/peano:0.2.1"
 #import peano.number: q
 
 // fraction notation
@@ -75,7 +75,7 @@ Currently, `rational.from` supports fraction notation and decimal notation with 
 A rational number can be displayed in both string and math format by using the `rational.to-str` and `rational.to-math` methods.
 
 ```typ
-#import "@preview/peano:0.2.0"
+#import "@preview/peano:0.2.1"
 #import peano.number: q
 
 #let value = q.from(113, 355)
@@ -87,7 +87,7 @@ A rational number can be displayed in both string and math format by using the `
 ### Complex numbers
 
 ```typ
-#import "@preview/peano:0.2.0"
+#import "@preview/peano:0.2.1"
 #import peano.number: c
 
 #c.from("1+2i") // from string
@@ -102,7 +102,7 @@ Currently Typst uses 64-bit integers for the `int` type which has a boundary bet
 #### Multi-precision integers
 
 ```typ
-#import "@preview/peano:0.2.0"
+#import "@preview/peano:0.2.1"
 #import peano.number.mp: mpz
 
 #decimal("11451419198101145141919810114") \
@@ -119,7 +119,7 @@ $2^100 = #mpz.to-str(mpz.pow(2, 100))$ \ // works!
 A multi-precision rational has numerator and denominator as multi-precision integers.
 
 ```typ
-#import "@preview/peano:0.2.0"
+#import "@preview/peano:0.2.1"
 #import peano.number.mp: mpq
 
 #mpq.to-math(mpq.from(0.3))
@@ -171,3 +171,12 @@ Initial release.
   - Renamed `rational.limit-den` to `rational.approx`
   - Fixed the problem that sign cannot be correctly handled when creating a `rational` by ratio.
   - Fixed the problem that `rational.reci` does not return result.
+
+### `0.2.1`
+
+- `peano.number`
+  - Support infinity and NaN values for `mp.integer`
+  - make zero value in `mp.integer` signed
+  - Support radix parsing for `mp.integer`
+  - Extended arithmetics in `mp.integer` to support infinity and NaN values. Now division by zero in `mp.integer` won't cause an error
+  - Fixed the bug that `mpq.pow` for negative zero and negative infinity returns the wrong sign

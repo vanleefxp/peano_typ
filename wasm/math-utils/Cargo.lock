@@ -454,6 +454,7 @@ dependencies = [
  "flagset",
  "fraction",
  "malachite",
+ "math-utils-base",
  "math-utils-proc-macro",
  "num",
  "num-prime",
@@ -468,6 +469,16 @@ dependencies = [
  "spfunc",
  "thiserror",
  "wasm-minimal-protocol",
+]
+
+[[package]]
+name = "math-utils-base"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "malachite",
+ "num",
+ "serde",
 ]
 
 [[package]]

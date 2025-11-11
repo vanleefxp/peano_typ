@@ -1,0 +1,10 @@
+[package]
+name = "math-utils-base"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+malachite = { version = "0.7.0", features = ["enable_serde"] }
+num = "0.4.3"
+serde = "1.0.228"

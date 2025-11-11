@@ -13,7 +13,7 @@
 )
 #let zero-byte = bytes((0,))
 
-#let mp-int-buffer(src) = {
+#let mp-int-buffer(src, base: auto) = {
   if type(src) == int or type(src) == float {
     math-utils-wasm.mpz_from_int(int(src).to-bytes())
   } else if type(src) == decimal {
@@ -23,14 +23,18 @@
     }
     math-utils-wasm.parse_mpz(bytes(src))
   } else if type(src) == str {
-    math-utils-wasm.parse_mpz(bytes(src))
+    if type(base) == int {
+      math-utils-wasm.parse_mpz_base(bytes(src), base.to-bytes(size: 1))
+    } else {
+      math-utils-wasm.parse_mpz(bytes(src))
+    }
   } else {
     panic("unsupported input type: `" + repr(type(src)) + "`.")
   }
 }
 
-#let /*pub*/ from(src) = {
-  mp-int(buffer: mp-int-buffer(src))
+#let /*pub*/ from(..args) = {
+  mp-int(buffer: mp-int-buffer(..args))
 }
 
 #let /*pub*/ is_(obj) = {

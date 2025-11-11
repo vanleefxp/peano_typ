@@ -6,6 +6,7 @@ use flagset::{FlagSet, Flags, flags};
 use malachite::base::num::arithmetic::traits::{
     Abs, BinomialCoefficient, ExtendedGcd, Factorial, Gcd, Pow as MpPow, Sign, UnsignedAbs,
 };
+use malachite::base::num::conversion::traits::FromStringBase;
 use paste::paste;
 
 use fraction::GenericFraction;
@@ -22,8 +23,8 @@ use wasm_minimal_protocol::*;
 
 use math_utils_proc_macro::define_func;
 
-use crate::frac::{Approx, ExtendedNumber, FracData, MpqExt, SignStrict};
-
+use crate::frac::FracData;
+use math_utils_base::{MpnExt, MpqExt, MpzExt, traits::*};
 mod complex;
 mod frac;
 mod quat;
@@ -39,7 +40,7 @@ trait FromWasmInput: Sized {
 }
 
 macro_rules! impl_wasm_conversion_for_num {
-    ($($t: ty), *) => {
+    ($($t: ty),+$(,)?) => {
         $(
             impl FromWasmInput for $t {
                 fn from_wasm_input(input: &[u8]) -> Result<Self, anyhow::Error> {
@@ -99,7 +100,7 @@ impl_wasm_conversion_for_num!(
 );
 impl_wasm_conversion_for_complex!(f64, 8);
 impl_wasm_conversion_for_complex!(f32, 4);
-impl_wasm_conversion_serialize!(Mpz, Mpn, Mpq, MpqExt);
+impl_wasm_conversion_serialize!(Mpz, Mpn, Mpq, MpqExt, MpzExt, MpnExt);
 
 impl FromWasmInput for String {
     fn from_wasm_input(input: &[u8]) -> Result<Self, anyhow::Error> {
@@ -441,16 +442,54 @@ define_func!(quaternion_mul, |x: h64, y: h64| quaternion::mul(x, y));
 
 // Multi-precision Integers
 
+macro_rules! sanitize_numeric_src {
+    ($src:expr) => {
+        $src.replace("\u{2212}", "-")
+            .replace("oo", "inf")
+            .replace("\u{221E}", "inf")
+    };
+}
+
+macro_rules! mpz_from_string_base {
+    ($base:expr, $src:expr) => {
+        Mpz::from_string_base($base, $src)
+            .map(MpzExt::from)
+            .ok_or_else(|| anyhow!("parsing failed"))
+    };
+}
+
 define_func!(
     parse_mpz,
     |src: String| {
-        malachite::Integer::from_str(&src.replace("\u{2212}", "-"))
-            .map_err(|_| anyhow!("Invalid number format"))
+        let src: &str = &sanitize_numeric_src!(src);
+        if src.len() > 2 {
+            let base_prefix: &str = &(src[..2].to_ascii_lowercase());
+            match base_prefix {
+                "0x" => mpz_from_string_base!(16, &src[2..]),
+                "0b" => mpz_from_string_base!(2, &src[2..]),
+                "0o" => mpz_from_string_base!(8, &src[2..]),
+                _ => MpzExt::from_str(src),
+            }
+        } else {
+            MpzExt::from_str(src)
+        }
     },
     true,
 );
-define_func!(mpz_from_int, |src: i64| Mpz::from(src));
-define_func!(mpz_to_string, |x: Mpz| x.to_string());
+define_func!(
+    parse_mpz_base,
+    |src: String, base: u8| {
+        MpzExt::from_string_base(base, &sanitize_numeric_src!(src))
+            .ok_or_else(|| anyhow!("parsing failed"))
+    },
+    true,
+);
+define_func!(mpz_from_int, |src: i64| MpzExt::from(src));
+define_func!(mpz_repr, |x: MpzExt| x.to_string());
+define_func!(
+    mpz_to_string,
+    |x: MpzExt, options: FlagSet<IntLayoutOptions>| x.to_layout_string(options)
+);
 
 #[wasm_func]
 fn verify_mpz(arg: &[u8]) -> Vec<u8> {
@@ -459,15 +498,15 @@ fn verify_mpz(arg: &[u8]) -> Vec<u8> {
         .into_wasm_output()
 }
 
-define_func!(mpz_add, |nums: Vec<Mpz>| nums.iter().sum::<Mpz>());
-define_func!(mpz_sub, |x: Mpz, y: Mpz| x - y);
-define_func!(mpz_mul, |nums: Vec<Mpz>| nums.iter().product::<Mpz>());
-define_func!(mpz_div, |x: Mpz, y: Mpz| x / y);
-define_func!(mpz_neg, |x: Mpz| -x);
-define_func!(mpz_pow, |x: Mpz, y: u64| Mpz::pow(x, y));
-define_func!(mpz_abs, |x: Mpz| x.unsigned_abs());
-define_func!(mpz_sign, |x: Mpz| x.sign());
-define_func!(mpz_cmp, |x: Mpz, y: Mpz| x.cmp(&y));
+define_func!(mpz_add, |nums: Vec<MpzExt>| nums.iter().sum::<MpzExt>());
+define_func!(mpz_sub, |x: MpzExt, y: MpzExt| x - y);
+define_func!(mpz_mul, |nums: Vec<MpzExt>| nums.iter().product::<MpzExt>());
+define_func!(mpz_div, |x: MpzExt, y: MpzExt| x / y);
+define_func!(mpz_neg, |x: MpzExt| -x);
+define_func!(mpz_pow, |x: MpzExt, y: u64| x.pow(y));
+define_func!(mpz_abs, |x: MpzExt| x.unsigned_abs());
+define_func!(mpz_sign, |x: MpzExt| x.sign());
+define_func!(mpz_cmp, |x: MpzExt, y: MpzExt| x.partial_cmp(&y));
 define_func!(mpz_fact, |n: u64| Mpn::factorial(n));
 define_func!(mpz_binom, |n: Mpz, k: Mpz| Mpz::binomial_coefficient(n, k));
 define_func!(mpz_gcd, |m: Mpz, n: Mpz| Mpn::gcd(
@@ -492,10 +531,10 @@ define_func!(
 );
 define_func!(mpq_from_int, |n: i64| MpqExt::from(n));
 define_func!(mpq_from_float, |n: f64| MpqExt::try_from(n), true);
-define_func!(mpq_from_mpz, |n: Mpz| MpqExt::from(n));
-define_func!(mpq_from_mpz_pair, |n: Mpz, d: Mpz| MpqExt::from_integers(
-    n, d
-));
+define_func!(mpq_from_mpz, |n: MpzExt| MpqExt::from(n));
+define_func!(mpq_from_mpz_pair, |n: MpzExt, d: MpzExt| {
+    MpqExt::from_extended_integers(n, d)
+});
 define_func!(mpq_num, |x: MpqExt| x.into_numerator());
 define_func!(mpq_den, |x: MpqExt| x.into_denominator());
 define_func!(mpq_num_signed, |x: MpqExt| x.into_numerator_signed());
@@ -535,6 +574,12 @@ define_func!(mpq_is_nan, |x: MpqExt| x.is_nan());
 define_func!(mpq_approx, |x: MpqExt, max_den: Mpn| x.approx(&max_den));
 
 flags! {
+    pub enum IntLayoutOptions: u8 {
+        PlusSign,
+        SignedZero,
+        SignedInf,
+        HyphenMinus,
+    }
     pub enum FracLayoutOptions: u8 {
         PlusSign,
         SignedZero,
@@ -553,6 +598,68 @@ macro_rules! minus_sign {
     ($b: expr) => {
         (if $b { '-' } else { '\u{2212}' })
     };
+}
+
+impl ToLayoutString for MpzExt {
+    type Options = FlagSet<IntLayoutOptions>;
+
+    fn to_layout_string(&self, options: Self::Options) -> String {
+        use IntLayoutOptions::*;
+        use MpzExt::*;
+
+        let plus_sign = options.contains(PlusSign);
+        let signed_zero = options.contains(SignedZero);
+        let signed_inf = options.contains(SignedInf);
+        let hyphen_minus = options.contains(HyphenMinus);
+
+        match self {
+            NaN => "NaN".to_string(),
+            &Zero(s) => (if signed_zero {
+                if s {
+                    if plus_sign { "+0" } else { "0" }
+                } else {
+                    if hyphen_minus { "-0" } else { "\u{2212}0" }
+                }
+            } else {
+                "0"
+            })
+            .into(),
+            &Inf(s) => (if s {
+                if plus_sign | signed_inf {
+                    "+\u{221E}"
+                } else {
+                    "\u{221E}"
+                }
+            } else {
+                if hyphen_minus {
+                    "-\u{221E}"
+                } else {
+                    "\u{2212}\u{221E}"
+                }
+            })
+            .into(),
+            Integer(n) => {
+                use Ordering::*;
+                match n.sign() {
+                    Greater => {
+                        if plus_sign {
+                            format!("+{}", n)
+                        } else {
+                            n.to_string()
+                        }
+                    }
+                    Less => {
+                        if hyphen_minus {
+                            format!("-{}", n)
+                        } else {
+                            format!("\u{2212}{}", n)
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
 }
 
 impl ToLayoutString for MpqExt {
@@ -588,18 +695,20 @@ impl ToLayoutString for MpqExt {
                 }
                 out
             }
-            &Inf(s) => {
-                let mut out = String::with_capacity(2);
-                if s {
-                    if plus_sign | signed_inf {
-                        out.push('+');
-                    }
+            &Inf(s) => (if s {
+                if plus_sign | signed_inf {
+                    "+\u{221E}"
                 } else {
-                    out.push(minus_sign!(hyphen_minus));
+                    "\u{221E}"
                 }
-                out.push('\u{221E}');
-                out
-            }
+            } else {
+                if hyphen_minus {
+                    "-\u{221E}"
+                } else {
+                    "\u{2212}\u{221E}"
+                }
+            })
+            .into(),
             Rational(q) => {
                 let mut out = String::with_capacity(10);
                 use Ordering::*;
@@ -625,6 +734,11 @@ impl ToLayoutString for MpqExt {
     }
 }
 
+trait ToMathStrings {
+    type Options;
+    fn to_math_strings(&self, options: Self::Options) -> ToMathStringResult;
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 struct ToMathStringResult {
     sign: Option<char>,
@@ -633,8 +747,10 @@ struct ToMathStringResult {
 }
 impl_wasm_conversion_serialize!(ToMathStringResult);
 
-impl MpqExt {
-    fn to_math_strings(&self, options: FlagSet<FracLayoutOptions>) -> ToMathStringResult {
+impl ToMathStrings for MpqExt {
+    type Options = FlagSet<FracLayoutOptions>;
+
+    fn to_math_strings(&self, options: Self::Options) -> ToMathStringResult {
         use FracLayoutOptions::*;
         use MpqExt::*;
 
@@ -650,11 +766,6 @@ impl MpqExt {
                 den: None,
             },
             &Zero(s) => {
-                // let sign = if s {
-                //     if plus_sign { Some('+') } else { None }
-                // } else {
-                //     if signed_zero { Some('\u{2212}') } else { None }
-                // };
                 let sign = if signed_zero {
                     if s {
                         if plus_sign { Some('+') } else { None }
