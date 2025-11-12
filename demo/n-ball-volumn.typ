@@ -1,7 +1,8 @@
-// #import "../src/lib.typ" as peano
 #import "@preview/lilaq:0.5.0" as lq
-#import "@preview/peano:0.2.0"
+#import "../src/lib.typ" as peano /*replace*/
 #import peano.func.special: gamma
+
+#set page(width: 48em, height: auto, margin: 2em)
 
 #let mark(mark-func, ..args) = {
   let mark-func = if type(mark-func) == str {

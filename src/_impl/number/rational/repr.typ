@@ -74,10 +74,11 @@
   denom-one: false,
   sign-on-num: false,
   fmt: none,
+  display: false,
 ) = {
   let n = from(n)
   let (sign, num, den) = n
-  if den == 0 {
+  let result = if den == 0 {
     if num == 0 {
       $"NaN"$
     } else if not sign {
@@ -99,4 +100,5 @@
   } else {
     $#sign-math(sign, num, plus-sign: plus-sign) #num / #den$
   }
+  if display { $math.display(result)$ } else { result }
 }

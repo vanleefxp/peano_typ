@@ -33,6 +33,7 @@
   denom-one: false,
   sign-on-num: false,
   fmt: none,
+  display: false,
 ) = {
   let option-flags = build-option-flags(
     plus-sign,
@@ -62,7 +63,8 @@
   }
   // [TODO] formatting by string?
 
-  if den == none { $#sign#num$ }
+  let result = if den == none { $#sign#num$ }
   else if sign-on-num { $#math.frac($#sign#num$, den)$ }
   else { $#sign#math.frac(num, den)$ }
+  if display { $math.display(result)$ } else { result }
 }

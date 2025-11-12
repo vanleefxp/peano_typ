@@ -181,3 +181,5 @@ Initial release.
   - Added `floor` and `ceil` for `mp.rational`
   - Fixed the problem that negative values in `mp.integer` gets multiple minus signs.
   - Renamed named argument `signed-infinity` to `signed-inf` for `to-str` in `rational`, `mp.integer`, `mp.rational`
+  - Added `cmp` and `to-float` for `rational`.
+  - Added named argument `display` for `rational.to-math` and `mp.rational.to-math`
