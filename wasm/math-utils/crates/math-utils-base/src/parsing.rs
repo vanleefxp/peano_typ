@@ -1,6 +1,5 @@
 use std::{ops::*, str::FromStr};
 
-use crate::traits::*;
 use anyhow::{Context, anyhow, bail};
 use malachite::base::num::{arithmetic::traits::*, basic::traits::*};
 
@@ -151,7 +150,7 @@ where
         + Pow<u64, Output = T>
         + Zero
         + One
-        + Ten,
+        + From<u8>,
 {
     let FractionFromDecimalResult {
         sign,
@@ -168,6 +167,7 @@ where
         bail!("Invalid repeating part")
     }
     let repeating_part_len = repeating_part.len() as u64;
+    let base = T::from(10u8);
 
     let mut num: T = if int_part.is_empty() {
         T::ZERO
@@ -175,7 +175,7 @@ where
         T::from_str(int_part).map_err(|_| anyhow!("parsing failed"))?
     };
     let mut den: T = if repeating_part_len > 0 {
-        let repeat_den: T = T::TEN.pow(repeating_part_len) - T::ONE;
+        let repeat_den: T = base.clone().pow(repeating_part_len) - T::ONE;
         let repeat_num: T = if repeating_part.is_empty() {
             T::ZERO
         } else {
@@ -193,9 +193,9 @@ where
     }
 
     if exp > 0 {
-        num *= &T::TEN.pow(exp as u64);
+        num *= &base.pow(exp as u64);
     } else if exp < 0 {
-        den *= &T::TEN.pow((-exp) as u64);
+        den *= &base.pow((-exp) as u64);
     }
 
     Ok(ParseFractionResult::Rational(sign, num, den))
@@ -214,7 +214,7 @@ where
         + Pow<u64, Output = T>
         + Zero
         + One
-        + Ten,
+        + From<u8>,
 {
     Ok(fraction_from_decimal(split_decimal_notation(src)?)?)
 }
@@ -232,7 +232,7 @@ where
         + Pow<u64, Output = T>
         + Zero
         + One
-        + Ten,
+        + From<u8>,
 {
     use ParseFractionResult::*;
     if src.eq_ignore_ascii_case("inf") | src.eq_ignore_ascii_case("+inf") {
@@ -308,7 +308,7 @@ where
         + Pow<u64, Output = T>
         + Zero
         + One
-        + Ten,
+        + From<u8>,
 {
     type Err = anyhow::Error;
 

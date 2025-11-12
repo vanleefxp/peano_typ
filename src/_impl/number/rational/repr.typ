@@ -26,7 +26,7 @@
     n,
     plus-sign: false,
     signed-zero: false,
-    signed-infinity: false,
+    signed-inf: false,
     denom-one: false,
     hyphen-minus: false,
 ) = {
@@ -39,7 +39,7 @@
     } else {
       let sgn-str = if not sign {
         minus-sign(hyphen-minus)
-      } else if plus-sign or signed-infinity { "+" }
+      } else if plus-sign or signed-inf { "+" }
       sgn-str + "\u{221E}"
     }
   } else {
@@ -70,7 +70,7 @@
   n,
   plus-sign: false,
   signed-zero: false,
-  signed-infinity: false,
+  signed-inf: false,
   denom-one: false,
   sign-on-num: false,
   fmt: none,

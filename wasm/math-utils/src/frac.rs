@@ -286,7 +286,7 @@ where
         + fraction::Integer
         + Zero
         + One
-        + Ten,
+        + From<u8>,
 {
     type Err = anyhow::Error;
 

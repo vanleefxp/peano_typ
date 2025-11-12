@@ -4,7 +4,8 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use flagset::{FlagSet, Flags, flags};
 use malachite::base::num::arithmetic::traits::{
-    Abs, BinomialCoefficient, ExtendedGcd, Factorial, Gcd, Pow as MpPow, Sign, UnsignedAbs,
+    Abs, BinomialCoefficient, Ceiling, ExtendedGcd, Factorial, Floor, Gcd, Pow as MpPow, Sign,
+    UnsignedAbs,
 };
 use malachite::base::num::conversion::traits::FromStringBase;
 use paste::paste;
@@ -572,6 +573,8 @@ define_func!(mpq_is_finite, |x: MpqExt| x.is_finite());
 define_func!(mpq_is_infinite, |x: MpqExt| x.is_infinite());
 define_func!(mpq_is_nan, |x: MpqExt| x.is_nan());
 define_func!(mpq_approx, |x: MpqExt, max_den: Mpn| x.approx(&max_den));
+define_func!(mpq_floor, |x: MpqExt| x.floor());
+define_func!(mpq_ceil, |x: MpqExt| x.ceiling());
 
 flags! {
     pub enum IntLayoutOptions: u8 {
@@ -650,9 +653,9 @@ impl ToLayoutString for MpzExt {
                     }
                     Less => {
                         if hyphen_minus {
-                            format!("-{}", n)
+                            format!("{}", n)
                         } else {
-                            format!("\u{2212}{}", n)
+                            format!("\u{2212}{}", n.unsigned_abs_ref())
                         }
                     }
                     _ => unreachable!(),

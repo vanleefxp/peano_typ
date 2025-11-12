@@ -30,6 +30,7 @@
   let n = range(..n-range)
   grid(
     lq.diagram(
+      title: [Volumn of $n$-ball],
       lq.plot(
           n, n.map(n-ball-volume),
           smooth: true,
@@ -38,6 +39,7 @@
       ),
     ),
     lq.diagram(
+      title: [Surface area of $n$-ball],
       lq.plot(
         n, n.map(n-ball-surface-area),
         smooth: true,
@@ -48,7 +50,7 @@
     $ V_n = pi^(n"/"2) / Gamma(n"/"2 + 1) $,
     $ S_n = (2 pi ^(n"/"2)) / Gamma(n"/"2) $,
     columns: (1fr,) * 2,
-    align: center + top,
+    align: center,
     row-gutter: 0.75em,
   )
 }

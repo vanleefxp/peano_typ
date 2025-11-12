@@ -1110,3 +1110,87 @@ impl ApproxAssign<Mpn> for MpqExt {
         }
     }
 }
+
+impl Ceiling for MpqExt {
+    type Output = MpzExt;
+
+    fn ceiling(self) -> Self::Output {
+        use MpqExt::*;
+        match self {
+            Zero(s) => MpzExt::Zero(s),
+            Inf(s) => MpzExt::Inf(s),
+            NaN => MpzExt::NAN,
+            Rational(q) => {
+                let orig_sign = q.sign().is_gt();
+                let new_value = q.ceiling();
+                match new_value {
+                    Mpz::ZERO => MpzExt::Zero(orig_sign),
+                    _ => MpzExt::Integer(new_value),
+                }
+            }
+        }
+    }
+}
+
+impl Ceiling for &MpqExt {
+    type Output = MpzExt;
+
+    fn ceiling(self) -> Self::Output {
+        use MpqExt::*;
+        match self {
+            &Zero(s) => MpzExt::Zero(s),
+            &Inf(s) => MpzExt::Inf(s),
+            NaN => MpzExt::NAN,
+            Rational(q) => {
+                let orig_sign = q.sign().is_gt();
+                let new_value = q.ceiling();
+                match new_value {
+                    Mpz::ZERO => MpzExt::Zero(orig_sign),
+                    _ => MpzExt::Integer(new_value),
+                }
+            }
+        }
+    }
+}
+
+impl Floor for MpqExt {
+    type Output = MpzExt;
+
+    fn floor(self) -> Self::Output {
+        use MpqExt::*;
+        match self {
+            Zero(s) => MpzExt::Zero(s),
+            Inf(s) => MpzExt::Inf(s),
+            NaN => MpzExt::NAN,
+            Rational(q) => {
+                let orig_sign = q.sign().is_gt();
+                let new_value = q.floor();
+                match new_value {
+                    Mpz::ZERO => MpzExt::Zero(orig_sign),
+                    _ => MpzExt::Integer(new_value),
+                }
+            }
+        }
+    }
+}
+
+impl Floor for &MpqExt {
+    type Output = MpzExt;
+
+    fn floor(self) -> Self::Output {
+        use MpqExt::*;
+        match self {
+            &Zero(s) => MpzExt::Zero(s),
+            &Inf(s) => MpzExt::Inf(s),
+            NaN => MpzExt::NAN,
+            Rational(q) => {
+                let orig_sign = q.sign().is_gt();
+                let new_value = q.floor();
+                match new_value {
+                    Mpz::ZERO => MpzExt::Zero(orig_sign),
+                    _ => MpzExt::Integer(new_value),
+                }
+            }
+        }
+    }
+}

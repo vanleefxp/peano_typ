@@ -11,14 +11,14 @@
   n,
   plus-sign: false,
   signed-zero: false,
-  signed-infinity: false,
+  signed-inf: false,
   denom-one: false,
   hyphen-minus: false,
 ) = {
   let option-flags = build-option-flags(
     plus-sign,
     signed-zero,
-    signed-infinity,
+    signed-inf,
     denom-one,
     hyphen-minus,
   )
@@ -29,7 +29,7 @@
   n,
   plus-sign: false,
   signed-zero: false,
-  signed-infinity: false,
+  signed-inf: false,
   denom-one: false,
   sign-on-num: false,
   fmt: none,
@@ -37,7 +37,7 @@
   let option-flags = build-option-flags(
     plus-sign,
     signed-zero,
-    signed-infinity,
+    signed-inf,
     denom-one,
     false,
   )
