@@ -180,4 +180,4 @@ Initial release.
   - Fixed the bug that `mp.rational.pow` for negative zero and negative infinity returns the wrong sign.
   - Added `floor` and `ceil` for `mp.rational`
   - Fixed the problem that negative values in `mp.integer` gets multiple minus signs.
-  - Renamed `signed-infinity` to `signed-inf` for `to-str` in `rational`, `mp.integer`, `mp.rational`
+  - Renamed named argument `signed-infinity` to `signed-inf` for `to-str` in `rational`, `mp.integer`, `mp.rational`
