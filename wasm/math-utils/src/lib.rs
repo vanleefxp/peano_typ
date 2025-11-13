@@ -362,6 +362,12 @@ define_func!(
     },
     true,
 );
+define_func!(
+    fraction_from_ints,
+    |n: i64, d: i64| q64::new_generic(fraction::Sign::Plus, n, d)
+        .ok_or_else(|| anyhow!("parsing failed")),
+    true,
+);
 define_func!(fraction_from_float, |num: f64| q64::from(num));
 define_func!(fraction_sub, |x: q64, y: q64| x - y);
 define_func!(fraction_div, |x: q64, y: q64| x / y);

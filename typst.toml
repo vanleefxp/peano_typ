@@ -1,6 +1,6 @@
 [package]
 name = "peano"
-version = "0.2.1"
+version = "0.2.2"
 entrypoint = "src/lib.typ"
 description = "A mathematics utility library providing specialized number types, number theory operations and a variety of math functions, etc."
 authors = ["F.X.P. <https://github.com/vanleefxp>"]

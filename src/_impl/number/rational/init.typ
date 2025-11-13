@@ -82,8 +82,8 @@
       panic("Unsupported type.")
     }
   } else if args.len() == 2 {
-    let (p, q) = args
-    fraction-from-ratio(p, q)
+    let (n, d) = args
+    from-bytes(math-utils-wasm.fraction_from_ints(n.to-bytes(), d.to-bytes()))
   } else {
     panic("Too many positional arguments.")
   }

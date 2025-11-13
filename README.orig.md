@@ -183,3 +183,9 @@ Initial release.
   - Renamed named argument `signed-infinity` to `signed-inf` for `to-str` in `rational`, `mp.integer`, `mp.rational`
   - Added `cmp` and `to-float` for `rational`.
   - Added named argument `display` for `rational.to-math` and `mp.rational.to-math`
+
+
+# `0.2.2`
+
+- `{{name}}.number`
+  - Fixed the problem that when using two integers as input, `rational.from` forgets to simplify the fraction

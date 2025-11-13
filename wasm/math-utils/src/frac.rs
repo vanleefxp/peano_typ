@@ -295,16 +295,3 @@ where
     }
 }
 
-// Extending malachite::Rational with infinity and NaN support
-
-// impl Ceiling for MpqExt {
-//     type Output = Self;
-
-//     fn ceiling(self) -> Self::Output {
-//         use MpqExt::*;
-//         match self {
-//             Zero(_) | Inf(_) | NaN => self,
-//             Rational(q) => Rational(q.ceiling()),
-//         }
-//     }
-// }
